@@ -10,6 +10,18 @@ function getInput(): HTMLInputElement {
 }
 
 /**
+ * Obtiene la zona de arrastre: el contenedor `<div>` con `onDrop`/`onDragOver`/`onDragLeave`
+ * (el que tiene el borde punteado), NO el input. Se localiza por su clase `border-dashed`.
+ */
+function getDropZone(container: HTMLElement): HTMLElement {
+  const zone = container.querySelector('[class*="border-dashed"]');
+  if (!zone) {
+    throw new Error('No se encontró la zona de arrastre (border-dashed).');
+  }
+  return zone as HTMLElement;
+}
+
+/**
  * Crea un `File` con un método `text()` que resuelve al contenido.
  * jsdom 25 no implementa `Blob.prototype.text()`, así que lo proveemos aquí
  * (el componente usa el `file.text()` estándar, disponible en navegadores reales).
@@ -144,5 +156,97 @@ describe('CsvUpload — R2 (XSS: mensaje fijo, sin bytes crudos ni HTML)', () =>
     expect(screen.queryByText(new RegExp(payload))).toBeNull();
     expect(container.querySelector('img')).toBeNull();
     expect(container.innerHTML).not.toContain('onerror=alert(1)');
+  });
+});
+
+describe('CsvUpload — drop sad-path (F-VER-04: CSV inválido soltado → error, sin señal)', () => {
+  it('muestra el error (role=alert) y no deja señal al soltar un CSV no numérico', async () => {
+    const { container } = render(<CsvUpload />);
+    const csv = 'tiempo,mV\n0,-0.085\n0.002,abc';
+    const file = makeCsvFile(csv);
+    const textSpy = vi.spyOn(file, 'text');
+    const dropZone = getDropZone(container);
+
+    fireEvent.drop(dropZone, { dataTransfer: { files: [file] } });
+
+    // El drop realmente ejerció handleDrop → handleFile → file.text().
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/no numérico/i);
+    expect(textSpy).toHaveBeenCalledTimes(1);
+    const state = useSignalStore.getState();
+    expect(state.status).toBe('error');
+    expect(state.signal).toBeNull();
+  });
+});
+
+describe('CsvUpload — drop happy-path (CSV válido soltado → éxito, señal en store)', () => {
+  it('muestra la indicación de éxito (role=status) y puebla el store al soltar un CSV válido', async () => {
+    const { container } = render(<CsvUpload />);
+    const csv = 'tiempo,mV\n0,-0.085\n0.002,-0.05\n0.004,0.1';
+    const file = makeCsvFile(csv);
+    const textSpy = vi.spyOn(file, 'text');
+    const dropZone = getDropZone(container);
+
+    fireEvent.drop(dropZone, { dataTransfer: { files: [file] } });
+
+    const statusEl = await screen.findByRole('status');
+    expect(statusEl).toHaveTextContent(/3 muestras/i);
+    expect(textSpy).toHaveBeenCalledTimes(1);
+    const state = useSignalStore.getState();
+    expect(state.status).toBe('loaded');
+    expect(state.signal?.samples).toHaveLength(3);
+  });
+});
+
+describe('CsvUpload — drop guard (soltar sin archivos → no-op)', () => {
+  it('no procesa ni lanza excepción al soltar sin archivos; permanece en estado inicial', () => {
+    const { container } = render(<CsvUpload />);
+    const dropZone = getDropZone(container);
+
+    expect(() =>
+      fireEvent.drop(dropZone, { dataTransfer: { files: [] } }),
+    ).not.toThrow();
+
+    // Sigue en el estado inicial: sin señal, sin error, status 'idle'.
+    const state = useSignalStore.getState();
+    expect(state.status).toBe('idle');
+    expect(state.signal).toBeNull();
+    expect(state.error).toBeNull();
+    // No hay indicación de éxito ni de error en el DOM.
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('CsvUpload — toggle visual de arrastre (dragOver / dragLeave)', () => {
+  it('activa el borde resaltado en dragOver y lo quita en dragLeave', () => {
+    const { container } = render(<CsvUpload />);
+    const dropZone = getDropZone(container);
+
+    // Estado inicial: sin resaltado.
+    expect(dropZone.className).not.toContain('border-sky-500');
+
+    fireEvent.dragOver(dropZone);
+    expect(dropZone.className).toContain('border-sky-500');
+
+    fireEvent.dragLeave(dropZone);
+    expect(dropZone.className).not.toContain('border-sky-500');
+  });
+});
+
+describe('CsvUpload — mapeo de mensaje inconsistent-columns (vía UI)', () => {
+  it('muestra el texto de "distinta cantidad de columnas" al cargar filas desparejas', async () => {
+    render(<CsvUpload />);
+    // Cabecera de 2 columnas; la segunda fila de datos tiene 3 → inconsistent-columns (fila 2).
+    const csv = 'tiempo,mV\n0,-0.085\n0.002,-0.05,0.1';
+    const file = makeCsvFile(csv);
+
+    fireEvent.change(getInput(), { target: { files: [file] } });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/distinta cantidad de columnas/i);
+    expect(alert).toHaveTextContent(/fila 2/i);
+    const state = useSignalStore.getState();
+    expect(state.signal).toBeNull();
   });
 });
