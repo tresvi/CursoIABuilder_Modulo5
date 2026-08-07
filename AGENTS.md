@@ -19,7 +19,7 @@ language these instructions are written in.
 
 If this project has a fixed working language, state it here and use it instead:
 
-> Working language: `Spanish — write all artifacts in Spanish`
+> Working language: `Spanish for documentation and interaction — but write code in English`
 
 ---
 
@@ -43,7 +43,7 @@ App de libre acceso (sin usuarios ni sesiones); no es una herramienta de diagnó
 | Runtime | Navegador (build/dev con Vite 6) |
 | Framework | React 19.2 (Vite) + Tailwind CSS v4 (`@tailwindcss/vite`) · shadcn/ui · lucide-react |
 | Database | N/A |
-| Test runner | Vitest 2 + React Testing Library (`@testing-library/react` · `jest-dom`) sobre jsdom |
+| Test runner | Vitest 4 + React Testing Library (`@testing-library/react` · `jest-dom`) sobre jsdom |
 | Linter / formatter | ESLint 9 (flat config, `typescript-eslint`) + Prettier 3 |
 | Package manager | npm |
 
