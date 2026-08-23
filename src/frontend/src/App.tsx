@@ -1,6 +1,7 @@
 import { ChartToolbar } from '@/components/ChartToolbar';
 import { CsvUpload } from '@/components/CsvUpload';
 import { ECGChart } from '@/components/ECGChart';
+import { MarkerForm } from '@/components/MarkerForm';
 import { MarkerList } from '@/components/MarkerList';
 
 function App() {
@@ -12,6 +13,10 @@ function App() {
         <ChartToolbar />
         <ECGChart />
         <MarkerList />
+        {/* Único MarkerForm de la app (FEAT-003b Block 5): autosuficiente, sirve tanto
+            al flujo de creación (disparado desde ECGChart) como al de edición
+            (disparado desde MarkerList), ambos vía markersStore.formState. */}
+        <MarkerForm />
       </div>
     </main>
   );

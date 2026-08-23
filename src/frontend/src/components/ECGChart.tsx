@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { computeYRange, xToTime } from '@/lib/ecg/chart/scale';
 import { MIN_DRAG_PX, pixelRangeToWindow } from '@/lib/ecg/chart/zoom';
@@ -8,7 +8,6 @@ import { useViewStore } from '@/state/viewStore';
 import { useMarkersStore } from '@/state/markersStore';
 import { drawChart } from './render/drawChart';
 import { clearOverlay, drawSelection } from './render/drawOverlay';
-import { MarkerForm } from './MarkerForm';
 
 /**
  * Dimensiones fijas del lienzo (px). El área de dibujo descuenta el padding.
@@ -40,15 +39,11 @@ export function ECGChart() {
   const initForSignal = useViewStore((s) => s.initForSignal);
   const setZoomWindow = useViewStore((s) => s.setZoomWindow);
   const markers = useMarkersStore((s) => s.markers);
-  const addMarker = useMarkersStore((s) => s.addMarker);
+  const openCreateForm = useMarkersStore((s) => s.openCreateForm);
 
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const overlayRef = useRef<HTMLCanvasElement | null>(null);
   const dragStartXRef = useRef<number | null>(null);
-
-  // Estado local del diálogo de creación de marcador (FEAT-003a, Block 5): el
-  // tiempo se fija al soltar un clic simple con la herramienta "Marcar" activa.
-  const [markerFormTime, setMarkerFormTime] = useState<number | null>(null);
 
   // Sync señal → vista: fija la ventana completa al cargarse una señal válida.
   // Guarda: con < 2 muestras o rango degenerado (t0 >= tN) NO inicializa (evita
@@ -118,26 +113,14 @@ export function ECGChart() {
       }
 
       // activeTool === 'mark': un clic simple (desplazamiento < MIN_DRAG_PX) abre el
-      // diálogo de creación con el tiempo del clic; un arrastre se ignora en silencio
-      // (fuera de alcance del PRD para esta herramienta).
+      // formulario de creación (en `markersStore`) con el tiempo del clic; un arrastre
+      // se ignora en silencio (fuera de alcance del PRD para esta herramienta).
       if (Math.abs(end - start) >= MIN_DRAG_PX) return;
       if (!visibleWindow) return;
-      setMarkerFormTime(xToTime(end, visibleWindow, DIMS));
+      openCreateForm(xToTime(end, visibleWindow, DIMS));
     },
-    [activeTool, visibleWindow, setZoomWindow],
+    [activeTool, visibleWindow, setZoomWindow, openCreateForm],
   );
-
-  const handleMarkerConfirm = useCallback(
-    (label: string | null) => {
-      if (markerFormTime !== null) addMarker(markerFormTime, label);
-      setMarkerFormTime(null);
-    },
-    [markerFormTime, addMarker],
-  );
-
-  const handleMarkerCancel = useCallback(() => {
-    setMarkerFormTime(null);
-  }, []);
 
   // Estado vacío: sin señal no se montan lienzos, se muestra un indicador.
   if (!signal) {
@@ -152,39 +135,31 @@ export function ECGChart() {
   }
 
   return (
-    <>
-      <div
-        data-testid="ecg-chart"
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        style={{ width: DIMS.width, height: DIMS.height }}
-        className={cn(
-          'relative mx-auto rounded-lg border border-slate-200 bg-white',
-          activeTool === 'zoom' && 'cursor-zoom-in',
-        )}
-      >
-        <canvas
-          ref={baseRef}
-          width={DIMS.width}
-          height={DIMS.height}
-          className="absolute inset-0"
-          aria-label="Gráfico ECG"
-        />
-        <canvas
-          ref={overlayRef}
-          width={DIMS.width}
-          height={DIMS.height}
-          className="absolute inset-0"
-          aria-hidden="true"
-        />
-      </div>
-      <MarkerForm
-        open={markerFormTime !== null}
-        time={markerFormTime}
-        onConfirm={handleMarkerConfirm}
-        onCancel={handleMarkerCancel}
+    <div
+      data-testid="ecg-chart"
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      style={{ width: DIMS.width, height: DIMS.height }}
+      className={cn(
+        'relative mx-auto rounded-lg border border-slate-200 bg-white',
+        activeTool === 'zoom' && 'cursor-zoom-in',
+      )}
+    >
+      <canvas
+        ref={baseRef}
+        width={DIMS.width}
+        height={DIMS.height}
+        className="absolute inset-0"
+        aria-label="Gráfico ECG"
       />
-    </>
+      <canvas
+        ref={overlayRef}
+        width={DIMS.width}
+        height={DIMS.height}
+        className="absolute inset-0"
+        aria-hidden="true"
+      />
+    </div>
   );
 }
