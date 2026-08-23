@@ -5,6 +5,7 @@ import { drawChart } from './render/drawChart';
 import { drawSelection, clearOverlay } from './render/drawOverlay';
 import { useSignalStore } from '@/state/signalStore';
 import { useViewStore } from '@/state/viewStore';
+import { useMarkersStore } from '@/state/markersStore';
 import type { ECGSample } from '@/lib/ecg/types';
 
 // Espiamos la capa de render conservando su implementación real (call-through),
@@ -49,6 +50,7 @@ function getContainer(): HTMLElement {
 beforeEach(() => {
   useSignalStore.getState().reset();
   useViewStore.getState().reset();
+  useMarkersStore.getState().reset();
   vi.clearAllMocks();
 });
 
@@ -230,6 +232,92 @@ describe('ECGChart — guarda de inicialización de vista (muestras insuficiente
 
     expect(initSpy).not.toHaveBeenCalled();
     expect(useViewStore.getState().visibleWindow).toBeNull();
+  });
+});
+
+describe('ECGChart — FEAT-003a Block 5 (herramienta "Marcar")', () => {
+  it('AC-02: clic simple con Marcar activo abre MarkerForm con el tiempo correcto', () => {
+    loadSignal(); // ventana [0, 10]
+    useViewStore.setState({ activeTool: 'mark' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 424 }); // left=48, drawWidth=800-48-16=736 → t≈5
+    fireEvent.mouseUp(container, { clientX: 424 });
+
+    const dialog = screen.getByRole('dialog');
+    const timeField = screen.getByLabelText('Tiempo del marcador') as HTMLInputElement;
+    expect(dialog).toBeInTheDocument();
+    // 424 px → t = (424 - 48) / 736 * 10 ≈ 5.11s → "00:05.11"
+    expect(timeField.value).toBe('00:05.11');
+  });
+
+  it('un arrastre (delta >= MIN_DRAG_PX) con Marcar activo NO abre el formulario', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'mark' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100 });
+    fireEvent.mouseMove(container, { clientX: 250 });
+    fireEvent.mouseUp(container, { clientX: 250 });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('un arrastre con Marcar activo NO dibuja el rectángulo de selección de zoom durante mousemove', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'mark' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100 });
+    fireEvent.mouseMove(container, { clientX: 250 });
+
+    expect(drawSelection).not.toHaveBeenCalled();
+  });
+
+  it('AC-03: confirmar en el formulario agrega el marcador a markersStore y redibuja incluyéndolo', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'mark' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 424 });
+    fireEvent.mouseUp(container, { clientX: 424 });
+
+    const labelInput = screen.getByLabelText('Etiqueta');
+    fireEvent.change(labelInput, { target: { value: 'Extrasístole' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    const markers = useMarkersStore.getState().markers;
+    expect(markers).toHaveLength(1);
+    expect(markers[0].label).toBe('Extrasístole');
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    const lastCall = vi.mocked(drawChart).mock.calls.at(-1);
+    expect(lastCall?.[1].markers).toEqual(markers);
+  });
+
+  it('clic con Marcar activo y visibleWindow nulo (señal insuficiente) no abre el formulario', () => {
+    // Una sola muestra: la guarda de inicialización de vista no llama a initForSignal,
+    // por lo que visibleWindow queda en null aunque haya señal cargada (ver describe de
+    // "guarda de inicialización de vista" más arriba).
+    loadSignal([{ t: 0, mV: 0 }]);
+    useViewStore.setState({ activeTool: 'mark' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 424 });
+    fireEvent.mouseUp(container, { clientX: 424 });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
 

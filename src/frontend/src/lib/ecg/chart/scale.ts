@@ -27,6 +27,27 @@ export function timeToX(t: number, window: TimeWindow, dims: ChartDims): number 
   return left + frac * drawWidth(dims);
 }
 
+/** Restringe `v` al intervalo `[lo, hi]`. */
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, v));
+}
+
+/**
+ * Mapea una coordenada X (px) a un instante de tiempo, inversa de `timeToX`.
+ * Si `x` cae fuera del área útil (antes de `padding.left` o después de
+ * `width - padding.right`) clampa el resultado a `window.fromTime`/`window.toTime`
+ * respectivamente — nunca devuelve un tiempo fuera de la ventana visible.
+ * Si la ventana es degenerada (`fromTime === toTime`) devuelve `fromTime`.
+ */
+export function xToTime(x: number, window: TimeWindow, dims: ChartDims): number {
+  const span = window.toTime - window.fromTime;
+  if (span === 0) return window.fromTime;
+  const left = dims.padding.left;
+  const frac = (x - left) / drawWidth(dims);
+  const t = window.fromTime + frac * span;
+  return clamp(t, window.fromTime, window.toTime);
+}
+
 /**
  * Mapea una amplitud (mV) a la coordenada Y (px) dentro del área de dibujo, con el eje
  * invertido: mV mayor => Y menor (arriba). Si el rango es degenerado (`min === max`)

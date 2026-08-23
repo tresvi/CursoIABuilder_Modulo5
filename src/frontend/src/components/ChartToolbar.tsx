@@ -5,7 +5,8 @@ import { useViewStore } from '@/state/viewStore';
  * Barra de herramientas del gráfico ECG (FEAT-002, Block 4). Controles nativos
  * (`<button>`) con `aria-label`, siguiendo el patrón de `CsvUpload`: selectores
  * granulares por campo del `viewStore`, sin lógica propia más allá de leer/escribir
- * el store. Toggle Zoom (FR-03), "Restablecer zoom" (FR-05) y toggle Rejilla (FR-06).
+ * el store. Toggle Zoom (FR-03), "Restablecer zoom" (FR-05), toggle Rejilla (FR-06) y
+ * toggle Marcar (FEAT-003a, FR-01).
  */
 export function ChartToolbar() {
   const activeTool = useViewStore((s) => s.activeTool);
@@ -15,9 +16,14 @@ export function ChartToolbar() {
   const toggleGrid = useViewStore((s) => s.toggleGrid);
 
   const isZoomActive = activeTool === 'zoom';
+  const isMarkActive = activeTool === 'mark';
 
   const handleToggleZoom = () => {
     setActiveTool(isZoomActive ? 'none' : 'zoom');
+  };
+
+  const handleToggleMark = () => {
+    setActiveTool(isMarkActive ? 'none' : 'mark');
   };
 
   return (
@@ -38,6 +44,21 @@ export function ChartToolbar() {
         )}
       >
         Zoom
+      </button>
+
+      <button
+        type="button"
+        aria-label="Activar herramienta de marcador"
+        aria-pressed={isMarkActive}
+        onClick={handleToggleMark}
+        className={cn(
+          'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+          isMarkActive
+            ? 'border-sky-600 bg-sky-600 text-white'
+            : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
+        )}
+      >
+        Marcar
       </button>
 
       <button
