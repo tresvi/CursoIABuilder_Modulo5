@@ -76,4 +76,57 @@ describe('MarkerList', () => {
     // ...pero no debe haber ningún <img> real insertado en el DOM.
     expect(container.querySelector('img')).toBeNull();
   });
+
+  it('AC-01: clic en "Editar" de un ítem llama a openEditForm con el id de ese marcador', () => {
+    useMarkersStore.setState({
+      markers: [{ id: 'm1', time: 5, label: 'Foo' }],
+    });
+
+    render(<MarkerList />);
+
+    fireEvent.click(screen.getByRole('button', { name: /editar/i }));
+
+    expect(useMarkersStore.getState().formState).toEqual({ mode: 'edit', markerId: 'm1' });
+  });
+
+  it('AC-04: clic en "Eliminar" abre el ConfirmDialog y no elimina inmediatamente', () => {
+    useMarkersStore.setState({
+      markers: [{ id: 'm1', time: 5, label: 'Foo' }],
+    });
+
+    render(<MarkerList />);
+
+    fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(useMarkersStore.getState().markers).toHaveLength(1);
+  });
+
+  it('AC-05: confirmar en el diálogo llama a removeMarker con el id correcto y el marcador desaparece de la lista', () => {
+    useMarkersStore.setState({
+      markers: [{ id: 'm1', time: 5, label: 'Foo' }],
+    });
+
+    render(<MarkerList />);
+
+    fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
+    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }));
+
+    expect(useMarkersStore.getState().markers).toHaveLength(0);
+    expect(screen.queryByText('Foo')).not.toBeInTheDocument();
+  });
+
+  it('AC-06: cancelar en el diálogo no llama a removeMarker; el marcador sigue en la lista', () => {
+    useMarkersStore.setState({
+      markers: [{ id: 'm1', time: 5, label: 'Foo' }],
+    });
+
+    render(<MarkerList />);
+
+    fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }));
+
+    expect(useMarkersStore.getState().markers).toHaveLength(1);
+    expect(screen.getByText('Foo')).toBeInTheDocument();
+  });
 });

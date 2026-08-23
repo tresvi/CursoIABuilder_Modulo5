@@ -236,7 +236,7 @@ describe('ECGChart — guarda de inicialización de vista (muestras insuficiente
 });
 
 describe('ECGChart — FEAT-003a Block 5 (herramienta "Marcar")', () => {
-  it('AC-02: clic simple con Marcar activo abre MarkerForm con el tiempo correcto', () => {
+  it('AC-02: clic simple con Marcar activo abre el formulario de creación en markersStore con el tiempo correcto', () => {
     loadSignal(); // ventana [0, 10]
     useViewStore.setState({ activeTool: 'mark' });
 
@@ -246,11 +246,12 @@ describe('ECGChart — FEAT-003a Block 5 (herramienta "Marcar")', () => {
     fireEvent.mouseDown(container, { clientX: 424 }); // left=48, drawWidth=800-48-16=736 → t≈5
     fireEvent.mouseUp(container, { clientX: 424 });
 
-    const dialog = screen.getByRole('dialog');
-    const timeField = screen.getByLabelText('Tiempo del marcador') as HTMLInputElement;
-    expect(dialog).toBeInTheDocument();
-    // 424 px → t = (424 - 48) / 736 * 10 ≈ 5.11s → "00:05.11"
-    expect(timeField.value).toBe('00:05.11');
+    // 424 px → t = (424 - 48) / 736 * 10 ≈ 5.11s. `MarkerForm` ya no se monta dentro de
+    // `ECGChart` (FEAT-003b Block 3): la apertura se verifica contra `formState` del store.
+    const formState = useMarkersStore.getState().formState;
+    expect(formState).not.toBeNull();
+    expect(formState?.mode).toBe('create');
+    expect(formState?.mode === 'create' && formState.time).toBeCloseTo(5.108695652173913);
   });
 
   it('un arrastre (delta >= MIN_DRAG_PX) con Marcar activo NO abre el formulario', () => {
@@ -280,7 +281,7 @@ describe('ECGChart — FEAT-003a Block 5 (herramienta "Marcar")', () => {
     expect(drawSelection).not.toHaveBeenCalled();
   });
 
-  it('AC-03: confirmar en el formulario agrega el marcador a markersStore y redibuja incluyéndolo', () => {
+  it('AC-03: agregar un marcador (confirmar, flujo cubierto por MarkerForm.test.tsx) redibuja el lienzo incluyéndolo', () => {
     loadSignal();
     useViewStore.setState({ activeTool: 'mark' });
 
@@ -290,15 +291,21 @@ describe('ECGChart — FEAT-003a Block 5 (herramienta "Marcar")', () => {
     fireEvent.mouseDown(container, { clientX: 424 });
     fireEvent.mouseUp(container, { clientX: 424 });
 
-    const labelInput = screen.getByLabelText('Etiqueta');
-    fireEvent.change(labelInput, { target: { value: 'Extrasístole' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    const formState = useMarkersStore.getState().formState;
+    expect(formState?.mode).toBe('create');
+
+    // `MarkerForm` (montado en `App.tsx`, Block 5) es quien confirma con
+    // `addMarker`/`closeForm`; acá simulamos ese efecto para verificar que `ECGChart`
+    // redibuja el lienzo base al cambiar `markers` (regresión de FEAT-003a, Block 5).
+    act(() => {
+      useMarkersStore.getState().addMarker(5.1, 'Extrasístole');
+      useMarkersStore.getState().closeForm();
+    });
 
     const markers = useMarkersStore.getState().markers;
     expect(markers).toHaveLength(1);
     expect(markers[0].label).toBe('Extrasístole');
-
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useMarkersStore.getState().formState).toBeNull();
 
     const lastCall = vi.mocked(drawChart).mock.calls.at(-1);
     expect(lastCall?.[1].markers).toEqual(markers);
