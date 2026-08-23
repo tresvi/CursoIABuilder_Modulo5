@@ -10,8 +10,8 @@
 
 | Sub-ticket | Title | PRD | Dependencies | Status |
 |---|---|---|---|---|
-| FEAT-003a | Crear y listar marcadores de evento (RF-03) | prd-FEAT-003a.md | none | active |
-| FEAT-003b | Editar y eliminar marcadores de evento (RF-04/05) | prd-FEAT-003b.md | depends on a | pending |
+| FEAT-003a | Crear y listar marcadores de evento (RF-03) | prd-FEAT-003a.md | none | done (PR #3, feat/FEAT-003a-crear-listar-marcadores) |
+| FEAT-003b | Editar y eliminar marcadores de evento (RF-04/05) | prd-FEAT-003b.md | depends on a | active |
 
 ## Suggested implementation order
 a → b
