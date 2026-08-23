@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { parseCsv } from '@/lib/ecg/parseCsv';
+import { cropSignal } from '@/lib/ecg/crop';
 import type { ECGSignal, ParseError } from '@/lib/ecg/types';
+import type { TimeWindow } from '@/lib/ecg/chart/types';
 
 /**
  * Error del proceso de carga: puede venir del parser (`ParseError`) o de la etapa
@@ -23,13 +25,16 @@ export interface SignalState {
   setError: (error: SignalError) => void;
   /** Vuelve al estado inicial (memoria volátil; no hay persistencia — AGENTS.md). */
   reset: () => void;
+  /** Recorta la señal cargada al rango dado (FR-04); no-op si no hay señal o el rango la deja
+   * inválida (<2 muestras, ver `cropSignal`). */
+  cropToRange: (range: TimeWindow) => void;
 }
 
 /**
  * Store Zustand de la señal ECG. Estado global en memoria (ADR-001); no se persiste:
  * los cambios no se guardan solos (regla de AGENTS.md). RF-02 consumirá `signal`.
  */
-export const useSignalStore = create<SignalState>((set) => ({
+export const useSignalStore = create<SignalState>((set, get) => ({
   signal: null,
   error: null,
   status: 'idle',
@@ -43,4 +48,11 @@ export const useSignalStore = create<SignalState>((set) => ({
   },
   setError: (error) => set({ signal: null, status: 'error', error }),
   reset: () => set({ signal: null, status: 'idle', error: null }),
+  cropToRange: (range) => {
+    const { signal } = get();
+    if (!signal) return;
+    const cropped = cropSignal(signal, range);
+    if (!cropped) return;
+    set({ signal: cropped });
+  },
 }));

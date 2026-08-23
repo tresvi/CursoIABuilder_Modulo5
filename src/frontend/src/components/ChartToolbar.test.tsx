@@ -8,6 +8,7 @@ const RESET_LABEL = 'Restablecer zoom';
 const GRID_LABEL = 'Mostrar u ocultar rejilla';
 const MARK_LABEL = 'Activar herramienta de marcador';
 const RULER_LABEL = 'Activar herramienta de regla';
+const CROP_LABEL = 'Activar herramienta de recorte';
 
 /**
  * Tests de ChartToolbar (FEAT-002, Block 4). Se resetea el viewStore antes de
@@ -138,6 +139,53 @@ describe('ChartToolbar', () => {
 
     fireEvent.click(rulerToggle);
     expect(markToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(rulerToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(useViewStore.getState().activeTool).toBe('ruler');
+  });
+
+  it('el toggle "Recorte" activa la herramienta y al volver a clickear la desactiva (AC-01)', () => {
+    render(<ChartToolbar />);
+    const cropToggle = screen.getByLabelText(CROP_LABEL);
+
+    expect(cropToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(useViewStore.getState().activeTool).toBe('none');
+
+    fireEvent.click(cropToggle);
+    expect(cropToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(useViewStore.getState().activeTool).toBe('crop');
+
+    fireEvent.click(cropToggle);
+    expect(cropToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(useViewStore.getState().activeTool).toBe('none');
+  });
+
+  it('activar "Recorte" mientras "Zoom", "Marcar" o "Regla" está activa desactiva la otra (exclusión mutua, AC-01)', () => {
+    render(<ChartToolbar />);
+    const zoomToggle = screen.getByLabelText(ZOOM_LABEL);
+    const markToggle = screen.getByLabelText(MARK_LABEL);
+    const rulerToggle = screen.getByLabelText(RULER_LABEL);
+    const cropToggle = screen.getByLabelText(CROP_LABEL);
+
+    fireEvent.click(zoomToggle);
+    expect(useViewStore.getState().activeTool).toBe('zoom');
+
+    fireEvent.click(cropToggle);
+    expect(zoomToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(cropToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(useViewStore.getState().activeTool).toBe('crop');
+
+    fireEvent.click(markToggle);
+    expect(cropToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(markToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(useViewStore.getState().activeTool).toBe('mark');
+
+    fireEvent.click(cropToggle);
+    expect(markToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(cropToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(useViewStore.getState().activeTool).toBe('crop');
+
+    fireEvent.click(rulerToggle);
+    expect(cropToggle).toHaveAttribute('aria-pressed', 'false');
     expect(rulerToggle).toHaveAttribute('aria-pressed', 'true');
     expect(useViewStore.getState().activeTool).toBe('ruler');
   });

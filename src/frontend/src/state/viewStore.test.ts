@@ -78,6 +78,13 @@ describe('viewStore', () => {
     expect(useViewStore.getState().activeTool).toBe('none');
   });
 
+  it("setActiveTool('crop') marca activo y setActiveTool('none') desactiva", () => {
+    useViewStore.getState().setActiveTool('crop');
+    expect(useViewStore.getState().activeTool).toBe('crop');
+    useViewStore.getState().setActiveTool('none');
+    expect(useViewStore.getState().activeTool).toBe('none');
+  });
+
   it('toggleGrid alterna gridVisible (true → false → true)', () => {
     expect(useViewStore.getState().gridVisible).toBe(true);
     useViewStore.getState().toggleGrid();

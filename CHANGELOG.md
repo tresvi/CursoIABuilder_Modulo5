@@ -38,3 +38,9 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   Zoom y Marcar; arrastrar con "Regla" activa muestra en vivo una línea y un tooltip con Δt/Δamplitud
   entre el punto inicial y la posición actual del cursor, y la medición queda visible hasta la
   próxima o hasta cambiar de herramienta. No modifica la señal.
+- FEAT-005 (RF-09): herramienta Recorte para acotar la señal ECG. Mutuamente excluyente con Zoom,
+  Marcar y Regla; arrastrar con "Recorte" activa resalta el rango seleccionado (mismo mecanismo de
+  overlay que Zoom) y, al soltar, muestra un cartel de confirmación con el rango elegido. Al
+  confirmar, la señal se reemplaza por una nueva señal acotada a ese rango y los marcadores fuera
+  del nuevo rango se eliminan; al cancelar, la señal queda intacta. La ventana visible se ajusta
+  automáticamente a la extensión de la señal recortada.

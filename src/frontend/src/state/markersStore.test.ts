@@ -102,4 +102,29 @@ describe('markersStore', () => {
     useMarkersStore.getState().reset();
     expect(useMarkersStore.getState().formState).toBeNull();
   });
+
+  it('removeMarkersOutside conserva solo los marcadores dentro del rango', () => {
+    useMarkersStore.getState().addMarker(1, 'antes');
+    useMarkersStore.getState().addMarker(5, 'dentro');
+    useMarkersStore.getState().addMarker(20, 'despues');
+    useMarkersStore.getState().removeMarkersOutside({ fromTime: 2, toTime: 10 });
+    const markers = useMarkersStore.getState().markers;
+    expect(markers).toHaveLength(1);
+    expect(markers[0].label).toBe('dentro');
+  });
+
+  it('removeMarkersOutside conserva un marcador exactamente en el borde (límites inclusivos)', () => {
+    useMarkersStore.getState().addMarker(2, 'borde-inicio');
+    useMarkersStore.getState().addMarker(10, 'borde-fin');
+    useMarkersStore.getState().addMarker(11, 'fuera');
+    useMarkersStore.getState().removeMarkersOutside({ fromTime: 2, toTime: 10 });
+    const markers = useMarkersStore.getState().markers;
+    expect(markers).toHaveLength(2);
+    expect(markers.map((m) => m.label).sort()).toEqual(['borde-fin', 'borde-inicio']);
+  });
+
+  it('removeMarkersOutside con markers: [] sigue siendo []', () => {
+    useMarkersStore.getState().removeMarkersOutside({ fromTime: 0, toTime: 100 });
+    expect(useMarkersStore.getState().markers).toEqual([]);
+  });
 });
