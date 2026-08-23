@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { computeYRange, xToTime, yToMv } from '@/lib/ecg/chart/scale';
 import { MIN_DRAG_PX, pixelRangeToWindow } from '@/lib/ecg/chart/zoom';
-import type { ChartDims, YRange } from '@/lib/ecg/chart/types';
+import type { ChartDims, TimeWindow, YRange } from '@/lib/ecg/chart/types';
 import { useSignalStore } from '@/state/signalStore';
 import { useViewStore } from '@/state/viewStore';
 import { useMarkersStore } from '@/state/markersStore';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { formatMarkerTime } from '@/lib/ecg/chart/format';
 import { drawChart } from './render/drawChart';
 import { clearOverlay, drawRuler, drawSelection } from './render/drawOverlay';
 
@@ -56,6 +58,9 @@ export function ECGChart() {
   // (NFR-01, mismo canvas overlay que ya evita repintar el lienzo base).
   const rulerYRangeRef = useRef<YRange | null>(null);
   const prevToolRef = useRef(activeTool);
+  // Rango pendiente de confirmación de recorte (FEAT-005, Block 5): estado local al
+  // componente, no al store — análogo a `deletingId` en `MarkerList.tsx`.
+  const [pendingCrop, setPendingCrop] = useState<TimeWindow | null>(null);
 
   // Sync señal → vista: fija la ventana completa al cargarse una señal válida.
   // Guarda: con < 2 muestras o rango degenerado (t0 >= tN) NO inicializa (evita
@@ -82,7 +87,13 @@ export function ECGChart() {
 
   const onMouseDown = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (activeTool !== 'zoom' && activeTool !== 'mark' && activeTool !== 'ruler') return;
+      if (
+        activeTool !== 'zoom' &&
+        activeTool !== 'mark' &&
+        activeTool !== 'ruler' &&
+        activeTool !== 'crop'
+      )
+        return;
       dragStartXRef.current = relativeX(event.clientX, overlayRef.current);
 
       if (activeTool === 'ruler') {
@@ -103,7 +114,7 @@ export function ECGChart() {
 
   const onMouseMove = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (activeTool !== 'zoom' && activeTool !== 'ruler') return;
+      if (activeTool !== 'zoom' && activeTool !== 'ruler' && activeTool !== 'crop') return;
       const start = dragStartXRef.current;
       if (start === null) return;
       const overlay = overlayRef.current;
@@ -131,14 +142,20 @@ export function ECGChart() {
 
   const onMouseUp = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (activeTool !== 'zoom' && activeTool !== 'mark' && activeTool !== 'ruler') return;
+      if (
+        activeTool !== 'zoom' &&
+        activeTool !== 'mark' &&
+        activeTool !== 'ruler' &&
+        activeTool !== 'crop'
+      )
+        return;
       const start = dragStartXRef.current;
       const startY = dragStartYRef.current;
       dragStartXRef.current = null;
       dragStartYRef.current = null;
       const overlay = overlayRef.current;
 
-      if (activeTool !== 'ruler') {
+      if (activeTool !== 'ruler' && activeTool !== 'crop') {
         if (overlay) {
           const ctx = overlay.getContext('2d');
           if (ctx) clearOverlay(ctx, DIMS);
@@ -152,6 +169,22 @@ export function ECGChart() {
         if (!visibleWindow) return;
         const win = pixelRangeToWindow(start, end, visibleWindow, DIMS);
         if (win) setZoomWindow(win);
+        return;
+      }
+
+      if (activeTool === 'crop') {
+        if (!visibleWindow) return;
+        const win = pixelRangeToWindow(start, end, visibleWindow, DIMS);
+        if (!win) {
+          // Arrastre < MIN_DRAG_PX (AC-04): el overlay no se limpió arriba (guard
+          // ajustado para excluir 'crop'), así que Recorte lo limpia acá.
+          const ctx = overlay.getContext('2d');
+          if (ctx) clearOverlay(ctx, DIMS);
+          return;
+        }
+        // NO limpiar el overlay: la selección debe seguir resaltada (FR-02) mientras
+        // el ConfirmDialog está abierto.
+        setPendingCrop(win);
         return;
       }
 
@@ -178,6 +211,28 @@ export function ECGChart() {
     },
     [activeTool, visibleWindow, setZoomWindow, openCreateForm],
   );
+
+  const handleConfirmCrop = useCallback(() => {
+    if (pendingCrop) {
+      useSignalStore.getState().cropToRange(pendingCrop);
+      useMarkersStore.getState().removeMarkersOutside(pendingCrop);
+    }
+    setPendingCrop(null);
+    const overlay = overlayRef.current;
+    if (overlay) {
+      const ctx = overlay.getContext('2d');
+      if (ctx) clearOverlay(ctx, DIMS);
+    }
+  }, [pendingCrop]);
+
+  const handleCancelCrop = useCallback(() => {
+    setPendingCrop(null);
+    const overlay = overlayRef.current;
+    if (overlay) {
+      const ctx = overlay.getContext('2d');
+      if (ctx) clearOverlay(ctx, DIMS);
+    }
+  }, []);
 
   // Limpia el overlay al abandonar la herramienta Regla (cambio de herramienta o
   // desactivación), sin depender de un evento de mouse: cubre AC-05. Se dispara sólo
@@ -208,31 +263,45 @@ export function ECGChart() {
   }
 
   return (
-    <div
-      data-testid="ecg-chart"
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      style={{ width: DIMS.width, height: DIMS.height }}
-      className={cn(
-        'relative mx-auto rounded-lg border border-slate-200 bg-white',
-        activeTool === 'zoom' && 'cursor-zoom-in',
-      )}
-    >
-      <canvas
-        ref={baseRef}
-        width={DIMS.width}
-        height={DIMS.height}
-        className="absolute inset-0"
-        aria-label="Gráfico ECG"
+    <>
+      <div
+        data-testid="ecg-chart"
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        style={{ width: DIMS.width, height: DIMS.height }}
+        className={cn(
+          'relative mx-auto rounded-lg border border-slate-200 bg-white',
+          activeTool === 'zoom' && 'cursor-zoom-in',
+        )}
+      >
+        <canvas
+          ref={baseRef}
+          width={DIMS.width}
+          height={DIMS.height}
+          className="absolute inset-0"
+          aria-label="Gráfico ECG"
+        />
+        <canvas
+          ref={overlayRef}
+          width={DIMS.width}
+          height={DIMS.height}
+          className="absolute inset-0"
+          aria-hidden="true"
+        />
+      </div>
+
+      <ConfirmDialog
+        open={pendingCrop !== null}
+        title="Confirmar recorte"
+        description={
+          pendingCrop
+            ? `¿Recortar la señal a ${formatMarkerTime(pendingCrop.fromTime)} – ${formatMarkerTime(pendingCrop.toTime)}? Esta acción no se puede deshacer.`
+            : ''
+        }
+        onConfirm={handleConfirmCrop}
+        onCancel={handleCancelCrop}
       />
-      <canvas
-        ref={overlayRef}
-        width={DIMS.width}
-        height={DIMS.height}
-        className="absolute inset-0"
-        aria-hidden="true"
-      />
-    </div>
+    </>
   );
 }

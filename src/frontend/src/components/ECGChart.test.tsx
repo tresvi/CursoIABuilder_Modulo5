@@ -8,6 +8,7 @@ import { useSignalStore } from '@/state/signalStore';
 import { useViewStore } from '@/state/viewStore';
 import { useMarkersStore } from '@/state/markersStore';
 import type { ECGSample } from '@/lib/ecg/types';
+import { formatMarkerTime } from '@/lib/ecg/chart/format';
 
 // Espiamos la capa de render conservando su implementación real (call-through),
 // para poder aseverar TANTO las llamadas al ctx (drawChart real dibuja) COMO el
@@ -475,5 +476,151 @@ describe('ECGChart — FEAT-004 Block 4 (herramienta "Regla")', () => {
     fireEvent.mouseUp(container, { clientX: 250, clientY: 150 });
 
     expect(drawRuler).not.toHaveBeenCalled();
+  });
+});
+
+describe('ECGChart — FEAT-005 Block 5 (herramienta "Recorte")', () => {
+  it('AC-02: con Recorte activo, arrastrar dibuja el rectángulo de selección (mismo mecanismo que Zoom)', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'crop' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100 });
+    fireEvent.mouseMove(container, { clientX: 250 });
+
+    expect(drawSelection).toHaveBeenCalled();
+  });
+
+  it('AC-03: soltar el mouse tras un arrastre suficiente con Recorte activo abre el ConfirmDialog con el rango correcto', () => {
+    loadSignal(); // ventana [0, 10]
+    useViewStore.setState({ activeTool: 'crop' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100 });
+    fireEvent.mouseMove(container, { clientX: 250 });
+    fireEvent.mouseUp(container, { clientX: 250 });
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+
+    const visibleWindow = useViewStore.getState().visibleWindow!;
+    const expectedFrom = xToTime(100, visibleWindow, DIMS);
+    const expectedTo = xToTime(250, visibleWindow, DIMS);
+
+    expect(screen.getByText(/Confirmar recorte/i)).toBeInTheDocument();
+    // Verificamos el texto interpolado exacto vía formatMarkerTime.
+    expect(
+      screen.getByText(
+        new RegExp(
+          `${formatMarkerTime(expectedFrom).replace('.', '\\.')}.*${formatMarkerTime(expectedTo).replace('.', '\\.')}`,
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('AC-04: un clic sin arrastre (< MIN_DRAG_PX) con Recorte activo no abre el diálogo ni altera signal', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'crop' });
+    const originalSignal = useSignalStore.getState().signal;
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 200 });
+    fireEvent.mouseUp(container, { clientX: 200 });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useSignalStore.getState().signal).toBe(originalSignal);
+  });
+
+  it('AC-04: un clic sin arrastre con Recorte activo limpia el overlay (no deja un rectángulo de selección "pegado")', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'crop' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 200 });
+    vi.mocked(clearOverlay).mockClear();
+    fireEvent.mouseUp(container, { clientX: 200 }); // desplazamiento < MIN_DRAG_PX
+
+    expect(clearOverlay).toHaveBeenCalled();
+  });
+
+  it('AC-05: confirmar el diálogo reemplaza signal en useSignalStore, llama removeMarkersOutside en useMarkersStore, y cierra el diálogo', () => {
+    loadSignal(); // ventana [0, 10]
+    useViewStore.setState({ activeTool: 'crop' });
+    useMarkersStore.getState().addMarker(1, 'dentro');
+    useMarkersStore.getState().addMarker(9, 'fuera');
+
+    const removeSpy = vi.spyOn(useMarkersStore.getState(), 'removeMarkersOutside');
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    // Arrastre [100, 600] → rango temporal ~[0.7, 7.5]s, deja 3 de las 6 muestras
+    // (t=2,4,6) dentro — suficiente para que cropSignal no devuelva null.
+    fireEvent.mouseDown(container, { clientX: 100 });
+    fireEvent.mouseMove(container, { clientX: 600 });
+    fireEvent.mouseUp(container, { clientX: 600 });
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+
+    const confirmButton = screen.getByRole('button', { name: 'Confirmar' });
+    fireEvent.click(confirmButton);
+
+    expect(useSignalStore.getState().signal).not.toBe(SAMPLES);
+    expect(useSignalStore.getState().signal!.samples.length).toBeLessThan(SAMPLES.length);
+    expect(removeSpy).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('AC-06: cancelar el diálogo deja signal sin cambios y cierra el diálogo', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'crop' });
+    const originalSignal = useSignalStore.getState().signal;
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100 });
+    fireEvent.mouseMove(container, { clientX: 250 });
+    fireEvent.mouseUp(container, { clientX: 250 });
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    const cancelButton = screen.getByRole('button', { name: 'Cancelar' });
+    fireEvent.click(cancelButton);
+
+    expect(useSignalStore.getState().signal).toBe(originalSignal);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('AC-07: tras confirmar el recorte, visibleWindow/fullWindow en useViewStore reflejan la extensión completa de la señal acotada', () => {
+    loadSignal(); // ventana [0, 10], muestras en t=0,2,4,6,8,10
+    useViewStore.setState({ activeTool: 'crop' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    // Arrastre que recorta aproximadamente al rango [2, 8] (dejando fuera t=0 y t=10).
+    fireEvent.mouseDown(container, { clientX: 200 });
+    fireEvent.mouseMove(container, { clientX: 600 });
+    fireEvent.mouseUp(container, { clientX: 600 });
+
+    const confirmButton = screen.getByRole('button', { name: 'Confirmar' });
+    fireEvent.click(confirmButton);
+
+    const croppedSignal = useSignalStore.getState().signal!;
+    const t0 = croppedSignal.samples[0].t;
+    const tN = croppedSignal.samples[croppedSignal.samples.length - 1].t;
+
+    expect(useViewStore.getState().fullWindow).toEqual({ fromTime: t0, toTime: tN });
+    expect(useViewStore.getState().visibleWindow).toEqual({ fromTime: t0, toTime: tN });
   });
 });

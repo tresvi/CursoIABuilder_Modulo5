@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Marker } from '@/lib/ecg/chart/types';
+import type { Marker, TimeWindow } from '@/lib/ecg/chart/types';
 
 /** Estado de apertura del formulario de marcadores (FEAT-003b, Block 1): compartido entre
  * `ECGChart` (dispara `create`) y `MarkerList` (dispara `edit`), que son componentes hermanos. */
@@ -25,6 +25,8 @@ export interface MarkersState {
   updateMarker: (id: string, label: string | null) => void;
   /** Quita el marcador con ese `id`. No-op silencioso si `id` no existe. */
   removeMarker: (id: string) => void;
+  /** Elimina los marcadores cuyo `time` cae fuera de `range` (decisión de PLAN, FEAT-005). */
+  removeMarkersOutside: (range: TimeWindow) => void;
   /** Abre el formulario en modo creación, en `time`. */
   openCreateForm: (time: number) => void;
   /** Abre el formulario en modo edición para `markerId` (no valida que exista). */
@@ -62,6 +64,11 @@ export const useMarkersStore = create<MarkersState>((set) => ({
   },
   removeMarker: (id) => {
     set((s) => ({ markers: s.markers.filter((m) => m.id !== id) }));
+  },
+  removeMarkersOutside: (range) => {
+    set((s) => ({
+      markers: s.markers.filter((m) => m.time >= range.fromTime && m.time <= range.toTime),
+    }));
   },
   openCreateForm: (time) => set({ formState: { mode: 'create', time } }),
   openEditForm: (markerId) => set({ formState: { mode: 'edit', markerId } }),
