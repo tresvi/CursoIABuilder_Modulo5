@@ -34,3 +34,44 @@ export function drawSelection(
   ctx.strokeRect(loX, top, width, height);
   ctx.restore();
 }
+
+/**
+ * Dibuja la Regla: una línea entre `(x0,y0)` y `(x1,y1)` sobre el overlay (mismo
+ * color/grosor que `drawSelection` usa para el rectángulo de Zoom) más un tooltip de
+ * texto cerca de `(x1,y1)` con Δt/Δamplitud. Los deltas se muestran siempre en valor
+ * absoluto: la Regla mide una diferencia, no una dirección de arrastre. El texto se
+ * pinta exclusivamente vía `ctx.fillText`, mismo patrón de `drawMarkers.ts` (FEAT-003a).
+ */
+export function drawRuler(
+  ctx: CanvasRenderingContext2D,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  dims: ChartDims,
+  deltaT: number,
+  deltaAmplitude: number,
+): void {
+  ctx.save();
+  ctx.strokeStyle = SELECTION_STROKE;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+
+  const deltaTText = `Δt: ${Math.abs(deltaT).toFixed(3)}s`;
+  const deltaAmplitudeText = `ΔmV: ${Math.abs(deltaAmplitude).toFixed(2)}mV`;
+
+  // Se acota el X del tooltip para que no se dibuje fuera del área del canvas
+  // cuando el punto final del arrastre queda cerca del borde derecho.
+  const tooltipX = Math.min(x1 + 6, dims.width - dims.padding.right - 60);
+
+  ctx.fillStyle = SELECTION_STROKE;
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(deltaTText, tooltipX, y1 - 6);
+  ctx.fillText(deltaAmplitudeText, tooltipX, y1 + 6);
+  ctx.restore();
+}

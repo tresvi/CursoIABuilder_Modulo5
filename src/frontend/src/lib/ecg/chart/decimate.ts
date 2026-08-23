@@ -10,11 +10,7 @@ import type { TimeWindow } from './types';
  * - Muestras fuera de `window` se descartan.
  * - Los dos vértices de una columna se emiten en orden temporal.
  */
-export function decimate(
-  samples: ECGSample[],
-  window: TimeWindow,
-  widthPx: number,
-): ECGSample[] {
+export function decimate(samples: ECGSample[], window: TimeWindow, widthPx: number): ECGSample[] {
   if (samples.length === 0) return [];
 
   const cols = Math.max(1, Math.floor(widthPx));

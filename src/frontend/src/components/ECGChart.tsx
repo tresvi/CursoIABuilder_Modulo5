@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { computeYRange, xToTime } from '@/lib/ecg/chart/scale';
+import { computeYRange, xToTime, yToMv } from '@/lib/ecg/chart/scale';
 import { MIN_DRAG_PX, pixelRangeToWindow } from '@/lib/ecg/chart/zoom';
-import type { ChartDims } from '@/lib/ecg/chart/types';
+import type { ChartDims, YRange } from '@/lib/ecg/chart/types';
 import { useSignalStore } from '@/state/signalStore';
 import { useViewStore } from '@/state/viewStore';
 import { useMarkersStore } from '@/state/markersStore';
 import { drawChart } from './render/drawChart';
-import { clearOverlay, drawSelection } from './render/drawOverlay';
+import { clearOverlay, drawRuler, drawSelection } from './render/drawOverlay';
 
 /**
  * Dimensiones fijas del lienzo (px). El área de dibujo descuenta el padding.
@@ -23,6 +23,12 @@ export const DIMS: ChartDims = {
 function relativeX(clientX: number, canvas: HTMLCanvasElement | null): number {
   if (!canvas) return clientX;
   return clientX - canvas.getBoundingClientRect().left;
+}
+
+/** Coordenada Y relativa al canvas (análoga a `relativeX`, para la herramienta Regla). */
+function relativeY(clientY: number, canvas: HTMLCanvasElement | null): number {
+  if (!canvas) return clientY;
+  return clientY - canvas.getBoundingClientRect().top;
 }
 
 /**
@@ -44,6 +50,12 @@ export function ECGChart() {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const overlayRef = useRef<HTMLCanvasElement | null>(null);
   const dragStartXRef = useRef<number | null>(null);
+  const dragStartYRef = useRef<number | null>(null);
+  // Fijado una sola vez en `onMouseDown` con `computeYRange(signal.samples)` y reusado
+  // durante todo el arrastre: recalcularlo en cada `mousemove` sería trabajo redundante
+  // (NFR-01, mismo canvas overlay que ya evita repintar el lienzo base).
+  const rulerYRangeRef = useRef<YRange | null>(null);
+  const prevToolRef = useRef(activeTool);
 
   // Sync señal → vista: fija la ventana completa al cargarse una señal válida.
   // Guarda: con < 2 muestras o rango degenerado (t0 >= tN) NO inicializa (evita
@@ -70,15 +82,28 @@ export function ECGChart() {
 
   const onMouseDown = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (activeTool !== 'zoom' && activeTool !== 'mark') return;
+      if (activeTool !== 'zoom' && activeTool !== 'mark' && activeTool !== 'ruler') return;
       dragStartXRef.current = relativeX(event.clientX, overlayRef.current);
+
+      if (activeTool === 'ruler') {
+        dragStartYRef.current = relativeY(event.clientY, overlayRef.current);
+        if (signal) rulerYRangeRef.current = computeYRange(signal.samples);
+
+        // Borra una medición anterior antes de empezar el nuevo arrastre: sin esto,
+        // una medición más corta que la previa dejaría restos visuales (AC-04).
+        const overlay = overlayRef.current;
+        if (overlay) {
+          const ctx = overlay.getContext('2d');
+          if (ctx) clearOverlay(ctx, DIMS);
+        }
+      }
     },
-    [activeTool],
+    [activeTool, signal],
   );
 
   const onMouseMove = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (activeTool !== 'zoom') return;
+      if (activeTool !== 'zoom' && activeTool !== 'ruler') return;
       const start = dragStartXRef.current;
       if (start === null) return;
       const overlay = overlayRef.current;
@@ -86,20 +111,38 @@ export function ECGChart() {
       const ctx = overlay.getContext('2d');
       if (!ctx) return;
       // Sólo el overlay se redibuja durante el arrastre (RNF-02).
-      drawSelection(ctx, start, relativeX(event.clientX, overlay), DIMS);
+      const x = relativeX(event.clientX, overlay);
+
+      if (activeTool === 'ruler') {
+        const startY = dragStartYRef.current;
+        const yRange = rulerYRangeRef.current;
+        if (startY === null || !yRange || !visibleWindow) return;
+        const y = relativeY(event.clientY, overlay);
+        const deltaT = xToTime(x, visibleWindow, DIMS) - xToTime(start, visibleWindow, DIMS);
+        const deltaAmplitude = yToMv(y, yRange, DIMS) - yToMv(startY, yRange, DIMS);
+        drawRuler(ctx, start, startY, x, y, DIMS, deltaT, deltaAmplitude);
+        return;
+      }
+
+      drawSelection(ctx, start, x, DIMS);
     },
-    [activeTool],
+    [activeTool, visibleWindow],
   );
 
   const onMouseUp = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (activeTool !== 'zoom' && activeTool !== 'mark') return;
+      if (activeTool !== 'zoom' && activeTool !== 'mark' && activeTool !== 'ruler') return;
       const start = dragStartXRef.current;
+      const startY = dragStartYRef.current;
       dragStartXRef.current = null;
+      dragStartYRef.current = null;
       const overlay = overlayRef.current;
-      if (overlay) {
-        const ctx = overlay.getContext('2d');
-        if (ctx) clearOverlay(ctx, DIMS);
+
+      if (activeTool !== 'ruler') {
+        if (overlay) {
+          const ctx = overlay.getContext('2d');
+          if (ctx) clearOverlay(ctx, DIMS);
+        }
       }
       if (start === null || !overlay) return;
 
@@ -112,6 +155,20 @@ export function ECGChart() {
         return;
       }
 
+      if (activeTool === 'ruler') {
+        // Desplazamiento despreciable (o clic sin arrastre): no deja medición visible
+        // (AC-06). Con desplazamiento suficiente, se deja el último dibujo de
+        // `onMouseMove` tal cual — no hay estado adicional que persistir (AC-03).
+        const endY = relativeY(event.clientY, overlay);
+        const deltaX = Math.abs(end - start);
+        const deltaY = startY === null ? 0 : Math.abs(endY - startY);
+        if (deltaX < MIN_DRAG_PX && deltaY < MIN_DRAG_PX) {
+          const ctx = overlay.getContext('2d');
+          if (ctx) clearOverlay(ctx, DIMS);
+        }
+        return;
+      }
+
       // activeTool === 'mark': un clic simple (desplazamiento < MIN_DRAG_PX) abre el
       // formulario de creación (en `markersStore`) con el tiempo del clic; un arrastre
       // se ignora en silencio (fuera de alcance del PRD para esta herramienta).
@@ -121,6 +178,22 @@ export function ECGChart() {
     },
     [activeTool, visibleWindow, setZoomWindow, openCreateForm],
   );
+
+  // Limpia el overlay al abandonar la herramienta Regla (cambio de herramienta o
+  // desactivación), sin depender de un evento de mouse: cubre AC-05. Se dispara sólo
+  // en la TRANSICIÓN desde 'ruler' (vía `prevToolRef`), no en cada montaje/cambio de
+  // `activeTool`: así no toca el canvas overlay cuando nunca hubo una medición que
+  // borrar (evita un `getContext` innecesario en el primer render).
+  useEffect(() => {
+    const prevTool = prevToolRef.current;
+    prevToolRef.current = activeTool;
+    if (prevTool !== 'ruler' || activeTool === 'ruler') return;
+    const overlay = overlayRef.current;
+    if (!overlay) return;
+    const ctx = overlay.getContext('2d');
+    if (!ctx) return;
+    clearOverlay(ctx, DIMS);
+  }, [activeTool]);
 
   // Estado vacío: sin señal no se montan lienzos, se muestra un indicador.
   if (!signal) {

@@ -34,3 +34,7 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   actual) y "Eliminar" (pide confirmación en un diálogo antes de borrar). El formulario se cierra
   solo si el marcador que se está editando es eliminado mientras tanto. Sin cambios en el instante
   de tiempo de un marcador (solo la etiqueta es editable).
+- FEAT-004 (RF-08): herramienta Regla para medir sobre el gráfico ECG. Mutuamente excluyente con
+  Zoom y Marcar; arrastrar con "Regla" activa muestra en vivo una línea y un tooltip con Δt/Δamplitud
+  entre el punto inicial y la posición actual del cursor, y la medición queda visible hasta la
+  próxima o hasta cambiar de herramienta. No modifica la señal.
