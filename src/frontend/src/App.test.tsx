@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import App from './App';
+import { useMarkersStore } from '@/state/markersStore';
 
 describe('App — smoke de montaje', () => {
+  beforeEach(() => {
+    useMarkersStore.setState({ markers: [], formState: null });
+  });
+
   it('renderiza el heading y monta CsvUpload + ChartToolbar + ECGChart sin errores', () => {
     render(<App />);
 
@@ -29,5 +34,20 @@ describe('App — smoke de montaje', () => {
     expect(
       screen.getByText('Cargá una señal para visualizarla.'),
     ).toBeInTheDocument();
+  });
+
+  it('monta MarkerForm (Block 5): sin formState abierto, el diálogo no se muestra', () => {
+    render(<App />);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('monta MarkerForm (Block 5): con formState abierto en el store, App renderiza el diálogo de MarkerForm', () => {
+    useMarkersStore.setState({ formState: { mode: 'create', time: 12 } });
+
+    render(<App />);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Nuevo marcador')).toBeInTheDocument();
   });
 });

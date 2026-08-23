@@ -44,4 +44,62 @@ describe('markersStore', () => {
     useMarkersStore.getState().reset();
     expect(useMarkersStore.getState().markers).toEqual([]);
   });
+
+  it('updateMarker reemplaza la etiqueta del marcador con ese id, sin tocar los demás', () => {
+    useMarkersStore.getState().addMarker(1, 'a');
+    useMarkersStore.getState().addMarker(2, 'b');
+    const [first, second] = useMarkersStore.getState().markers;
+    useMarkersStore.getState().updateMarker(first.id, 'nuevo');
+    const markers = useMarkersStore.getState().markers;
+    expect(markers.find((m) => m.id === first.id)?.label).toBe('nuevo');
+    expect(markers.find((m) => m.id === second.id)?.label).toBe('b');
+  });
+
+  it('updateMarker con label solo-espacios guarda label: null', () => {
+    useMarkersStore.getState().addMarker(1, 'a');
+    const [marker] = useMarkersStore.getState().markers;
+    useMarkersStore.getState().updateMarker(marker.id, '   ');
+    expect(useMarkersStore.getState().markers[0].label).toBeNull();
+  });
+
+  it('updateMarker con un id inexistente no modifica markers (no-op)', () => {
+    useMarkersStore.getState().addMarker(1, 'a');
+    const before = useMarkersStore.getState().markers;
+    useMarkersStore.getState().updateMarker('id-inexistente', 'nuevo');
+    expect(useMarkersStore.getState().markers).toEqual(before);
+  });
+
+  it('removeMarker quita el marcador con ese id, sin tocar los demás', () => {
+    useMarkersStore.getState().addMarker(1, 'a');
+    useMarkersStore.getState().addMarker(2, 'b');
+    const [first, second] = useMarkersStore.getState().markers;
+    useMarkersStore.getState().removeMarker(first.id);
+    const markers = useMarkersStore.getState().markers;
+    expect(markers).toHaveLength(1);
+    expect(markers[0].id).toBe(second.id);
+  });
+
+  it('removeMarker con un id inexistente no modifica markers (no-op)', () => {
+    useMarkersStore.getState().addMarker(1, 'a');
+    const before = useMarkersStore.getState().markers;
+    useMarkersStore.getState().removeMarker('id-inexistente');
+    expect(useMarkersStore.getState().markers).toEqual(before);
+  });
+
+  it('openCreateForm/openEditForm/closeForm fijan formState al valor esperado', () => {
+    useMarkersStore.getState().openCreateForm(10);
+    expect(useMarkersStore.getState().formState).toEqual({ mode: 'create', time: 10 });
+
+    useMarkersStore.getState().openEditForm('marker-1');
+    expect(useMarkersStore.getState().formState).toEqual({ mode: 'edit', markerId: 'marker-1' });
+
+    useMarkersStore.getState().closeForm();
+    expect(useMarkersStore.getState().formState).toBeNull();
+  });
+
+  it('reset() también deja formState en null', () => {
+    useMarkersStore.getState().openCreateForm(10);
+    useMarkersStore.getState().reset();
+    expect(useMarkersStore.getState().formState).toBeNull();
+  });
 });
