@@ -29,3 +29,8 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   debajo del gráfico, ordenados cronológicamente. Viven solo en memoria de sesión (sin
   persistencia hasta "Guardar", RF-15, fuera de alcance). Base para editar/eliminar marcadores
   (FEAT-003b, RF-04/05).
+- FEAT-003b (RF-04/05): edición y eliminación de marcadores de evento. Desde el panel de la lista,
+  cada marcador ofrece "Editar" (reabre el mismo formulario de creación, prellenado con la etiqueta
+  actual) y "Eliminar" (pide confirmación en un diálogo antes de borrar). El formulario se cierra
+  solo si el marcador que se está editando es eliminado mientras tanto. Sin cambios en el instante
+  de tiempo de un marcador (solo la etiqueta es editable).
