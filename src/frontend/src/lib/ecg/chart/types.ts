@@ -18,3 +18,10 @@ export type ChartDims = {
 
 /** Rango de amplitud (mV) para el autoescalado del eje Y. */
 export type YRange = { min: number; max: number };
+
+/** Marcador de evento sobre la señal ECG (FEAT-003a). `label` es una etiqueta libre opcional. */
+export interface Marker {
+  id: string;
+  time: number;
+  label: string | null;
+}

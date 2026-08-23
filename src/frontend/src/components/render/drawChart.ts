@@ -1,15 +1,17 @@
 import { decimate } from '@/lib/ecg/chart/decimate';
 import { mvToY, niceTicks, timeToX } from '@/lib/ecg/chart/scale';
-import type { ChartDims, TimeWindow, YRange } from '@/lib/ecg/chart/types';
+import type { ChartDims, Marker, TimeWindow, YRange } from '@/lib/ecg/chart/types';
 import type { ECGSignal } from '@/lib/ecg/types';
+import { drawMarkers } from './drawMarkers';
 
-/** Parámetros de dibujo del lienzo base (FEAT-002, Block 3). */
+/** Parámetros de dibujo del lienzo base (FEAT-002, Block 3; `markers` agregado en FEAT-003a, Block 5). */
 export interface DrawChartOptions {
   signal: ECGSignal;
   window: TimeWindow;
   dims: ChartDims;
   yRange: YRange;
   gridVisible: boolean;
+  markers: Marker[];
 }
 
 const GRID_COLOR = '#f2d4d4';
@@ -139,13 +141,15 @@ function drawSignal(
 
 /**
  * Dibuja el lienzo base del gráfico ECG en este orden: rejilla (si visible),
- * ejes con ticks (X en s / Y en mV) y la señal decimada. Función lo más pura
- * posible: recibe el `ctx`, no lee stores ni el DOM.
+ * ejes con ticks (X en s / Y en mV), la señal decimada y los marcadores (FEAT-003a,
+ * Block 5, sobre el mismo pase — NFR-02). Función lo más pura posible: recibe el
+ * `ctx`, no lee stores ni el DOM.
  */
 export function drawChart(ctx: CanvasRenderingContext2D, opts: DrawChartOptions): void {
-  const { signal, window, dims, yRange, gridVisible } = opts;
+  const { signal, window, dims, yRange, gridVisible, markers } = opts;
   ctx.clearRect(0, 0, dims.width, dims.height);
   if (gridVisible) drawGrid(ctx, window, yRange, dims);
   drawAxes(ctx, window, yRange, dims);
   drawSignal(ctx, signal, window, yRange, dims);
+  drawMarkers(ctx, markers, window, dims);
 }

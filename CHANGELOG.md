@@ -21,3 +21,11 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   cumplir el umbral de rendimiento. Herramienta de Zoom (arrastrar para acercar un rango de
   tiempo, con cursor de lupa, y botón "Restablecer zoom") y control para mostrar u ocultar la
   rejilla ECG. Estado de vista en un store Zustand separado (`viewStore`).
+- FEAT-003a (RF-03): marcadores de evento sobre el gráfico ECG — crear y listar. Herramienta
+  "Marcar" en la toolbar (mutuamente excluyente con Zoom); un clic simple sobre el gráfico con la
+  herramienta activa abre un formulario (diálogo shadcn/ui) para confirmar el marcador con una
+  etiqueta libre, anclado al instante de tiempo del clic. Los marcadores se dibujan en el mismo
+  pase de render del gráfico (sin redibujados adicionales) y se listan en un panel colapsable
+  debajo del gráfico, ordenados cronológicamente. Viven solo en memoria de sesión (sin
+  persistencia hasta "Guardar", RF-15, fuera de alcance). Base para editar/eliminar marcadores
+  (FEAT-003b, RF-04/05).

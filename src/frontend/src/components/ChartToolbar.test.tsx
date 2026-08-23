@@ -6,6 +6,7 @@ import { useViewStore } from '@/state/viewStore';
 const ZOOM_LABEL = 'Activar herramienta de zoom';
 const RESET_LABEL = 'Restablecer zoom';
 const GRID_LABEL = 'Mostrar u ocultar rejilla';
+const MARK_LABEL = 'Activar herramienta de marcador';
 
 /**
  * Tests de ChartToolbar (FEAT-002, Block 4). Se resetea el viewStore antes de
@@ -66,5 +67,36 @@ describe('ChartToolbar', () => {
 
     expect(() => fireEvent.click(screen.getByLabelText(RESET_LABEL))).not.toThrow();
     expect(useViewStore.getState().visibleWindow).toBeNull();
+  });
+
+  it('el toggle "Marcar" activa la herramienta y al volver a clickear la desactiva (AC-01)', () => {
+    render(<ChartToolbar />);
+    const markToggle = screen.getByLabelText(MARK_LABEL);
+
+    expect(markToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(useViewStore.getState().activeTool).toBe('none');
+
+    fireEvent.click(markToggle);
+    expect(markToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(useViewStore.getState().activeTool).toBe('mark');
+
+    fireEvent.click(markToggle);
+    expect(markToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(useViewStore.getState().activeTool).toBe('none');
+  });
+
+  it('activar "Marcar" mientras "Zoom" está activo desactiva "Zoom" (exclusión mutua)', () => {
+    render(<ChartToolbar />);
+    const zoomToggle = screen.getByLabelText(ZOOM_LABEL);
+    const markToggle = screen.getByLabelText(MARK_LABEL);
+
+    fireEvent.click(zoomToggle);
+    expect(zoomToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(useViewStore.getState().activeTool).toBe('zoom');
+
+    fireEvent.click(markToggle);
+    expect(zoomToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(markToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(useViewStore.getState().activeTool).toBe('mark');
   });
 });

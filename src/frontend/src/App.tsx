@@ -1,6 +1,7 @@
 import { ChartToolbar } from '@/components/ChartToolbar';
 import { CsvUpload } from '@/components/CsvUpload';
 import { ECGChart } from '@/components/ECGChart';
+import { MarkerList } from '@/components/MarkerList';
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
         <CsvUpload />
         <ChartToolbar />
         <ECGChart />
+        <MarkerList />
       </div>
     </main>
   );

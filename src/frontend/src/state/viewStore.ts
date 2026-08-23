@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { TimeWindow } from '@/lib/ecg/chart/types';
 
 /** Herramienta de interacción activa sobre el gráfico (FR-03/FR-04). */
-export type ChartTool = 'none' | 'zoom';
+export type ChartTool = 'none' | 'zoom' | 'mark';
 
 export interface ViewState {
   /** Ventana temporal actualmente visible; `null` mientras no hay señal (FR-04). */
