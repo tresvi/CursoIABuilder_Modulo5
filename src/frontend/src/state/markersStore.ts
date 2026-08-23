@@ -3,7 +3,10 @@ import type { Marker } from '@/lib/ecg/chart/types';
 
 /** Estado de apertura del formulario de marcadores (FEAT-003b, Block 1): compartido entre
  * `ECGChart` (dispara `create`) y `MarkerList` (dispara `edit`), que son componentes hermanos. */
-export type MarkerFormState = { mode: 'create'; time: number } | { mode: 'edit'; markerId: string } | null;
+export type MarkerFormState =
+  | { mode: 'create'; time: number }
+  | { mode: 'edit'; markerId: string }
+  | null;
 
 /** Normaliza una etiqueta de marcador: trim, y `'' → null`. Compartida por `addMarker`/`updateMarker`. */
 function normalizeLabel(label: string | null): string | null {

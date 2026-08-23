@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { ECGChart } from './ECGChart';
+import { ECGChart, DIMS } from './ECGChart';
+import { xToTime, yToMv, computeYRange } from '@/lib/ecg/chart/scale';
 import { drawChart } from './render/drawChart';
-import { drawSelection, clearOverlay } from './render/drawOverlay';
+import { drawSelection, drawRuler, clearOverlay } from './render/drawOverlay';
 import { useSignalStore } from '@/state/signalStore';
 import { useViewStore } from '@/state/viewStore';
 import { useMarkersStore } from '@/state/markersStore';
@@ -20,6 +21,7 @@ vi.mock('./render/drawOverlay', async (importOriginal) => {
   return {
     ...actual,
     drawSelection: vi.fn(actual.drawSelection),
+    drawRuler: vi.fn(actual.drawRuler),
     clearOverlay: vi.fn(actual.clearOverlay),
   };
 });
@@ -328,3 +330,150 @@ describe('ECGChart — FEAT-003a Block 5 (herramienta "Marcar")', () => {
   });
 });
 
+describe('ECGChart — FEAT-004 Block 4 (herramienta "Regla")', () => {
+  it('AC-02: arrastrar con Regla activa dibuja drawRuler en cada mousemove con Δt/Δamplitud correctos', () => {
+    loadSignal(); // ventana [0, 10], yRange [-1, 1]
+    useViewStore.setState({ activeTool: 'ruler' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100, clientY: 50 });
+    fireEvent.mouseMove(container, { clientX: 250, clientY: 150 });
+
+    const visibleWindow = useViewStore.getState().visibleWindow!;
+    const yRange = computeYRange(SAMPLES);
+    const expectedDeltaT = xToTime(250, visibleWindow, DIMS) - xToTime(100, visibleWindow, DIMS);
+    const expectedDeltaAmplitude = yToMv(150, yRange, DIMS) - yToMv(50, yRange, DIMS);
+
+    expect(drawRuler).toHaveBeenCalledWith(
+      expect.anything(),
+      100,
+      50,
+      250,
+      150,
+      DIMS,
+      expectedDeltaT,
+      expectedDeltaAmplitude,
+    );
+  });
+
+  it('AC-03: soltar el mouse tras un arrastre válido con Regla activa NO llama a clearOverlay', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'ruler' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100, clientY: 50 });
+    fireEvent.mouseMove(container, { clientX: 250, clientY: 150 });
+    vi.mocked(clearOverlay).mockClear();
+    fireEvent.mouseUp(container, { clientX: 250, clientY: 150 });
+
+    expect(clearOverlay).not.toHaveBeenCalled();
+  });
+
+  it('AC-04: un segundo arrastre con Regla activa limpia el overlay en el onMouseDown correspondiente', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'ruler' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    // Primer arrastre, queda visible.
+    fireEvent.mouseDown(container, { clientX: 100, clientY: 50 });
+    fireEvent.mouseMove(container, { clientX: 250, clientY: 150 });
+    fireEvent.mouseUp(container, { clientX: 250, clientY: 150 });
+
+    vi.mocked(clearOverlay).mockClear();
+    vi.mocked(drawRuler).mockClear();
+
+    // Segundo arrastre: onMouseDown debe limpiar el overlay antes de dibujar de nuevo.
+    fireEvent.mouseDown(container, { clientX: 120, clientY: 60 });
+    expect(clearOverlay).toHaveBeenCalled();
+
+    fireEvent.mouseMove(container, { clientX: 300, clientY: 200 });
+    expect(drawRuler).toHaveBeenCalledWith(
+      expect.anything(),
+      120,
+      60,
+      300,
+      200,
+      DIMS,
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
+
+  it('AC-05: cambiar activeTool fuera de "ruler" limpia el overlay vía useEffect, sin interacción de mouse', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'ruler' });
+
+    render(<ECGChart />);
+    vi.mocked(clearOverlay).mockClear();
+
+    act(() => {
+      useViewStore.setState({ activeTool: 'none' });
+    });
+
+    expect(clearOverlay).toHaveBeenCalled();
+  });
+
+  it('AC-06: un arrastre menor a MIN_DRAG_PX con Regla activa limpia el overlay en mouseup (no deja medición)', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'ruler' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100, clientY: 50 });
+    vi.mocked(clearOverlay).mockClear();
+    fireEvent.mouseUp(container, { clientX: 101, clientY: 51 }); // desplazamiento < MIN_DRAG_PX
+
+    expect(clearOverlay).toHaveBeenCalled();
+  });
+
+  it('AC-06: un arrastre puramente horizontal (deltaX grande, deltaY≈0) con Regla activa NO limpia el overlay — es una medición válida de Δt', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'ruler' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100, clientY: 50 });
+    fireEvent.mouseMove(container, { clientX: 250, clientY: 50 });
+    vi.mocked(clearOverlay).mockClear();
+    fireEvent.mouseUp(container, { clientX: 250, clientY: 50 }); // deltaX=150 (>=MIN_DRAG_PX), deltaY=0
+
+    expect(clearOverlay).not.toHaveBeenCalled();
+  });
+
+  it('Regresión: un arrastre con Marcar activo sigue sin dibujar drawSelection ni drawRuler en mousemove', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'mark' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100, clientY: 50 });
+    fireEvent.mouseMove(container, { clientX: 250, clientY: 150 });
+
+    expect(drawSelection).not.toHaveBeenCalled();
+    expect(drawRuler).not.toHaveBeenCalled();
+  });
+
+  it('sin señal cargada (visibleWindow/signal nulos) un arrastre con Regla activa no dibuja ni deja medición', () => {
+    // Una sola muestra: visibleWindow queda null (guarda de inicialización de vista).
+    loadSignal([{ t: 0, mV: 0 }]);
+    useViewStore.setState({ activeTool: 'ruler' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    fireEvent.mouseDown(container, { clientX: 100, clientY: 50 });
+    fireEvent.mouseMove(container, { clientX: 250, clientY: 150 });
+    fireEvent.mouseUp(container, { clientX: 250, clientY: 150 });
+
+    expect(drawRuler).not.toHaveBeenCalled();
+  });
+});

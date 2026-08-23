@@ -63,6 +63,23 @@ export function mvToY(mv: number, yRange: YRange, dims: ChartDims): number {
 }
 
 /**
+ * Mapea una coordenada Y (px) a una amplitud (mV), inversa de `mvToY`, con el eje
+ * invertido: Y menor => mV mayor (arriba). Si `y` cae fuera del área útil (antes de
+ * `padding.top` o después de `height - padding.bottom`) clampa el resultado a
+ * `yRange.max`/`yRange.min` respectivamente — nunca devuelve una amplitud fuera del
+ * rango visible. Si el rango es degenerado (`min === max`) devuelve `min`.
+ */
+export function yToMv(y: number, yRange: YRange, dims: ChartDims): number {
+  const span = yRange.max - yRange.min;
+  if (span === 0) return yRange.min;
+  const top = dims.padding.top;
+  const h = drawHeight(dims);
+  const frac = (y - top) / h;
+  const mv = yRange.max - frac * span;
+  return clamp(mv, yRange.min, yRange.max);
+}
+
+/**
  * Autoescala el eje Y al min/max de las muestras.
  * - `[]` => rango por defecto seguro (`{min:-1,max:1}`).
  * - `min === max` => expande un margen para no dividir por cero después.

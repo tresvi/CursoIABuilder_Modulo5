@@ -23,6 +23,4 @@ export type ParseError =
   | { kind: 'inconsistent-columns'; row: number };
 
 /** Resultado del parseo: éxito con señal, o fallo con error discriminado. */
-export type ParseResult =
-  | { ok: true; signal: ECGSignal }
-  | { ok: false; error: ParseError };
+export type ParseResult = { ok: true; signal: ECGSignal } | { ok: false; error: ParseError };

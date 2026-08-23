@@ -203,9 +203,7 @@ describe('CsvUpload — drop guard (soltar sin archivos → no-op)', () => {
     const { container } = render(<CsvUpload />);
     const dropZone = getDropZone(container);
 
-    expect(() =>
-      fireEvent.drop(dropZone, { dataTransfer: { files: [] } }),
-    ).not.toThrow();
+    expect(() => fireEvent.drop(dropZone, { dataTransfer: { files: [] } })).not.toThrow();
 
     // Sigue en el estado inicial: sin señal, sin error, status 'idle'.
     const state = useSignalStore.getState();
