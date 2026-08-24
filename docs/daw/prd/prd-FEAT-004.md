@@ -5,7 +5,7 @@
 | Ticket | FEAT-004 |
 | Tracker | none |
 | Date | 2026-08-23 |
-| PRD loops | 0 |
+| PRD loops | 1 |
 
 ## Context and Problem
 
@@ -36,6 +36,10 @@ punto donde se presiona el mouse y el punto donde se suelta, sin modificar la se
   nuevo (arrastra otra vez) con "Regla" activa.
 - FR-05: El sistema debe ocultar la medición visible al desactivar la herramienta "Regla" o al
   cambiar a otra herramienta (Zoom, Marcar).
+- FR-06: El sistema debe cambiar la forma del cursor del mouse mientras la herramienta "Regla" está
+  activa, para indicar visualmente que está en uso (mismo criterio que el cursor de lupa de Zoom,
+  AC-08 del PRD maestro; requisito ya existente en el PRD maestro como AC-11 y no trasladado a este
+  PRD en su versión original — corregido en PRD loop 1, ver FIX-001).
 
 ## Non-Functional Requirements
 
@@ -60,6 +64,8 @@ punto donde se presiona el mouse y el punto donde se suelta, sin modificar la se
   ocultar la medición visible.
 - AC-06 (FR-03): IF el arrastre con "Regla" activa no tiene desplazamiento mínimo perceptible
   (equivalente a un clic sin arrastre), THEN THE sistema SHALL no dejar ninguna medición visible.
+- AC-07 (FR-06): WHEN la herramienta "Regla" está activa, THE sistema SHALL mostrar un cursor
+  distintivo (no el cursor por defecto) mientras el mouse está sobre el gráfico.
 
 ## Out of Scope
 

@@ -125,6 +125,50 @@ describe('ECGChart — AC-04 (arrastre con Zoom acerca la vista + cursor lupa)',
   });
 });
 
+describe('ECGChart — FIX-001 (cursor distintivo por herramienta activa)', () => {
+  it('con activeTool=ruler, el contenedor expone cursor-crosshair', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'ruler' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    expect(container.className).toContain('cursor-crosshair');
+  });
+
+  it('con activeTool=crop, el contenedor expone cursor-crosshair', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'crop' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    expect(container.className).toContain('cursor-crosshair');
+  });
+
+  it('con activeTool=mark, el contenedor no expone ningún cursor especial', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'mark' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    expect(container.className).not.toContain('cursor-crosshair');
+    expect(container.className).not.toContain('cursor-zoom-in');
+  });
+
+  it('con activeTool=none, el contenedor no expone ningún cursor especial', () => {
+    loadSignal();
+    useViewStore.setState({ activeTool: 'none' });
+
+    render(<ECGChart />);
+    const container = getContainer();
+
+    expect(container.className).not.toContain('cursor-crosshair');
+    expect(container.className).not.toContain('cursor-zoom-in');
+  });
+});
+
 describe('ECGChart — AC-05 (clic sin desplazamiento no modifica la vista)', () => {
   it('mousedown y mouseup en el mismo x no llama setZoomWindow ni cambia la ventana', () => {
     loadSignal();
