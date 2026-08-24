@@ -3,6 +3,7 @@ import { CsvUpload } from '@/components/CsvUpload';
 import { ECGChart } from '@/components/ECGChart';
 import { MarkerForm } from '@/components/MarkerForm';
 import { MarkerList } from '@/components/MarkerList';
+import { MetricsPanel } from '@/components/MetricsPanel';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <CsvUpload />
         <ChartToolbar />
         <ECGChart />
+        <MetricsPanel />
         <MarkerList />
         {/* Único MarkerForm de la app (FEAT-003b Block 5): autosuficiente, sirve tanto
             al flujo de creación (disparado desde ECGChart) como al de edición
