@@ -50,3 +50,9 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   métrica muestra "N/A" cuando no hay suficientes picos R detectados en la ventana. Cálculo
   enteramente client-side, sin persistencia ni dependencia del backend (RF-10, filtros DSP, aún no
   implementado).
+
+### Fixed
+
+- FIX-001: las herramientas Regla y Recorte no cambiaban la forma del cursor del mouse mientras
+  estaban activas, pese a que el PRD maestro lo exige (igual que Zoom, que sí lo tenía). Ahora ambas
+  muestran `cursor-crosshair` mientras están activas.
