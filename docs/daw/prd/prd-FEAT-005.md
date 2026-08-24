@@ -5,7 +5,7 @@
 | Ticket | FEAT-005 |
 | Tracker | none |
 | Date | 2026-08-23 |
-| PRD loops | 1 |
+| PRD loops | 2 |
 
 ## Context and Problem
 
@@ -41,6 +41,10 @@ ese rango. Cancelar la confirmación, o no confirmar, deja la señal intacta.
   selección y dejar la señal original intacta, sin aplicar ningún recorte.
 - FR-06: El sistema debe, tras confirmar un recorte, restablecer la ventana visible del gráfico
   (zoom) para mostrar la señal acotada completa.
+- FR-07: El sistema debe cambiar la forma del cursor del mouse mientras la herramienta "Recorte"
+  está activa, para indicar visualmente que está en uso (mismo criterio que el cursor de lupa de
+  Zoom, AC-08 del PRD maestro; requisito ya existente en el PRD maestro como AC-12 y no trasladado a
+  este PRD en su versión original — corregido en PRD loop 2, ver FIX-001).
 
 ## Non-Functional Requirements
 
@@ -71,6 +75,8 @@ ese rango. Cancelar la confirmación, o no confirmar, deja la señal intacta.
   selección y mantener la señal original sin cambios.
 - AC-07 (FR-06): WHEN se confirma un recorte, THE sistema SHALL mostrar la ventana visible del
   gráfico ajustada a la extensión completa de la nueva señal acotada.
+- AC-08 (FR-07): WHEN la herramienta "Recorte" está activa, THE sistema SHALL mostrar un cursor
+  distintivo (no el cursor por defecto) mientras el mouse está sobre el gráfico.
 
 ## Out of Scope
 
