@@ -44,3 +44,9 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   confirmar, la señal se reemplaza por una nueva señal acotada a ese rango y los marcadores fuera
   del nuevo rango se eliminan; al cancelar, la señal queda intacta. La ventana visible se ajusta
   automáticamente a la extensión de la señal recortada.
+- FEAT-006 (RF-14): panel de métricas cardíacas HRV (BPM, SDNN, RMSSD, pNN50), calculadas a partir
+  de una detección de picos R por umbral adaptativo sobre la ventana de tiempo visible del gráfico
+  (nunca sobre todo el archivo), recalculadas automáticamente al hacer zoom o restablecer zoom. Cada
+  métrica muestra "N/A" cuando no hay suficientes picos R detectados en la ventana. Cálculo
+  enteramente client-side, sin persistencia ni dependencia del backend (RF-10, filtros DSP, aún no
+  implementado).
