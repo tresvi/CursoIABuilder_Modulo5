@@ -273,6 +273,7 @@ export function ECGChart() {
         className={cn(
           'relative mx-auto rounded-lg border border-slate-200 bg-white',
           activeTool === 'zoom' && 'cursor-zoom-in',
+          (activeTool === 'ruler' || activeTool === 'crop') && 'cursor-crosshair',
         )}
       >
         <canvas
