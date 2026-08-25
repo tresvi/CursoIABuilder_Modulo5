@@ -60,3 +60,5 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   durante un mismo arrastre (nunca limpiaba el overlay entre eventos de `mousemove`). Ahora limpia
   el overlay antes de cada redibujo y muestra la selección como un rectángulo (igual que Zoom y
   Recorte) en vez de una línea diagonal.
+- FIX-003: el tooltip Δt/ΔmV de la herramienta Regla se dibujaba con una fuente de 10px, chica y
+  difícil de leer. Ahora usa 20px.
