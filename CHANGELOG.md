@@ -56,3 +56,7 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 - FIX-001: las herramientas Regla y Recorte no cambiaban la forma del cursor del mouse mientras
   estaban activas, pese a que el PRD maestro lo exige (igual que Zoom, que sí lo tenía). Ahora ambas
   muestran `cursor-crosshair` mientras están activas.
+- FIX-002: la herramienta Regla dejaba acumuladas las líneas y los tooltips de mediciones anteriores
+  durante un mismo arrastre (nunca limpiaba el overlay entre eventos de `mousemove`). Ahora limpia
+  el overlay antes de cada redibujo y muestra la selección como un rectángulo (igual que Zoom y
+  Recorte) en vez de una línea diagonal.
