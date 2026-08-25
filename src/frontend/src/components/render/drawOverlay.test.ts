@@ -95,6 +95,14 @@ describe('drawRuler', () => {
     expect(texts).toContain('ΔmV: 1.20mV');
   });
 
+  it('usa una fuente de 20px para el tooltip (FIX-003: al menos el doble del tamaño original)', () => {
+    const ctx = createCtxStub();
+
+    drawRuler(ctx, 10, 20, 100, 200, DIMS, 0.5, 1.2);
+
+    expect(ctx.font).toBe('20px sans-serif');
+  });
+
   it('con deltaT/deltaAmplitude negativos muestra el valor absoluto (sin signo negativo)', () => {
     const ctx = createCtxStub();
     const fillTextSpy = vi.fn();

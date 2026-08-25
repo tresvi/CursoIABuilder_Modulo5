@@ -78,7 +78,7 @@ export function drawRuler(
   const tooltipX = Math.min(x1 + 6, dims.width - dims.padding.right - 60);
 
   ctx.fillStyle = SELECTION_STROKE;
-  ctx.font = '10px sans-serif';
+  ctx.font = '20px sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
   ctx.fillText(deltaTText, tooltipX, y1 - 6);
