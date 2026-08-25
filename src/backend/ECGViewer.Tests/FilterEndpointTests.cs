@@ -152,4 +152,97 @@ public class FilterEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task MovingAverage_ReturnsFilteredSignal()
+    {
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 512, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.MovingAverage, Cutoff: null, CutoffLow: null, CutoffHigh: null, Window: 5, PolynomialDegree: null);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<FilterResponse>(JsonOptions, cancellationToken);
+        Assert.NotNull(body);
+        AssertSignalChangedButTimestampsPreserved(samples, body!.Samples);
+    }
+
+    [Fact]
+    public async Task MovingMedian_ReturnsFilteredSignal()
+    {
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 512, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.MovingMedian, Cutoff: null, CutoffLow: null, CutoffHigh: null, Window: 7, PolynomialDegree: null);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<FilterResponse>(JsonOptions, cancellationToken);
+        Assert.NotNull(body);
+        AssertSignalChangedButTimestampsPreserved(samples, body!.Samples);
+    }
+
+    [Fact]
+    public async Task SavitzkyGolay_ReturnsFilteredSignal()
+    {
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 512, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.SavitzkyGolay, Cutoff: null, CutoffLow: null, CutoffHigh: null, Window: 7, PolynomialDegree: 2);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<FilterResponse>(JsonOptions, cancellationToken);
+        Assert.NotNull(body);
+        AssertSignalChangedButTimestampsPreserved(samples, body!.Samples);
+    }
+
+    [Fact]
+    public async Task MovingAverage_RejectsWindowNotPositiveInteger()
+    {
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 512, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.MovingAverage, Cutoff: null, CutoffLow: null, CutoffHigh: null, Window: 0, PolynomialDegree: null);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SavitzkyGolay_RejectsDegreeGreaterOrEqualWindow()
+    {
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 512, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.SavitzkyGolay, Cutoff: null, CutoffLow: null, CutoffHigh: null, Window: 5, PolynomialDegree: 5);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SavitzkyGolay_RejectsUnstableCombinationWith400()
+    {
+        // Con una señal de 10 muestras, ventana=9 y grado=8 (ambos valores válidos según
+        // FilterValidation: window <= totalSamples y degree < window), las ventanas centradas en
+        // los extremos quedan recortadas por el borde a solo 5 muestras reales (half = window/2 =
+        // 4), mientras que el polinomio de grado 8 requiere 9 coeficientes: el sistema de mínimos
+        // cuadrados (X^T X, de 9x9) queda con rango <= 5, es decir, singular. Esto dispara la
+        // detección de pivote casi-cero en la eliminación gaussiana de TimeDomainFilters.
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 10, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.SavitzkyGolay, Cutoff: null, CutoffLow: null, CutoffHigh: null, Window: 9, PolynomialDegree: 8);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }

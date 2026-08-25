@@ -111,7 +111,71 @@ app.MapPost("/api/filters/apply", (FilterRequest request) =>
             break;
         }
 
-        // MovingAverage, MovingMedian y SavitzkyGolay se implementan en el Bloque 3.
+        case FilterType.MovingAverage:
+        {
+            if (request.Window is not int window)
+            {
+                return Results.BadRequest(new { error = "Falta el parámetro 'window' para el filtro seleccionado" });
+            }
+
+            var windowError = FilterValidation.ValidateWindow(window, request.Samples.Count);
+            if (windowError is not null)
+            {
+                return Results.BadRequest(new { error = windowError });
+            }
+
+            filtered = TimeDomainFilters.ApplyMovingAverage(mV, window);
+            break;
+        }
+
+        case FilterType.MovingMedian:
+        {
+            if (request.Window is not int window)
+            {
+                return Results.BadRequest(new { error = "Falta el parámetro 'window' para el filtro seleccionado" });
+            }
+
+            var windowError = FilterValidation.ValidateWindow(window, request.Samples.Count);
+            if (windowError is not null)
+            {
+                return Results.BadRequest(new { error = windowError });
+            }
+
+            filtered = TimeDomainFilters.ApplyMovingMedian(mV, window);
+            break;
+        }
+
+        case FilterType.SavitzkyGolay:
+        {
+            if (request.Window is not int window || request.PolynomialDegree is not int degree)
+            {
+                return Results.BadRequest(new { error = "Faltan los parámetros 'window'/'polynomialDegree' para el filtro seleccionado" });
+            }
+
+            var windowError = FilterValidation.ValidateWindow(window, request.Samples.Count);
+            if (windowError is not null)
+            {
+                return Results.BadRequest(new { error = windowError });
+            }
+
+            var degreeError = FilterValidation.ValidatePolynomialDegree(degree, window);
+            if (degreeError is not null)
+            {
+                return Results.BadRequest(new { error = degreeError });
+            }
+
+            try
+            {
+                filtered = TimeDomainFilters.ApplySavitzkyGolay(mV, window, degree);
+            }
+            catch (Exception)
+            {
+                return Results.BadRequest(new { error = "No se pudo calcular el filtro con los parámetros dados" });
+            }
+
+            break;
+        }
+
         default:
             return Results.StatusCode(StatusCodes.Status501NotImplemented);
     }
