@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { parseCsv } from '@/lib/ecg/parseCsv';
 import { cropSignal } from '@/lib/ecg/crop';
+import { applyFilter as applyFilterApi } from '@/lib/api/filters';
+import type { FilterType, FilterParams } from '@/lib/api/filters';
 import type { ECGSignal, ParseError } from '@/lib/ecg/types';
 import type { TimeWindow } from '@/lib/ecg/chart/types';
 
@@ -16,6 +18,9 @@ export type SignalStatus = 'idle' | 'loaded' | 'error';
 export interface SignalState {
   /** Señal ingresada; `null` mientras no haya una carga exitosa (FR-03). */
   signal: ECGSignal | null;
+  /** Señal previa al último filtro aplicado; `null` si no hay filtro para revertir
+   * (undo de un solo nivel — FR-08, excepción documentada en el PRD de FEAT-007b). */
+  previousSignal: ECGSignal | null;
   /** Último error de carga; `null` en `idle`/`loaded`. */
   error: SignalError | null;
   status: SignalStatus;
@@ -28,6 +33,16 @@ export interface SignalState {
   /** Recorta la señal cargada al rango dado (FR-04); no-op si no hay señal o el rango la deja
    * inválida (<2 muestras, ver `cropSignal`). */
   cropToRange: (range: TimeWindow) => void;
+  /** Aplica `filterType` con `params` sobre la señal actual (encadenado aditivo, FR-09),
+   * guardando la señal pre-filtro en `previousSignal` para poder revertir (FR-08). No-op
+   * si no hay señal cargada. */
+  applyFilter: (
+    filterType: FilterType,
+    params: FilterParams,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  /** Revierte el último filtro aplicado sin llamar al backend (FR-08, undo de un solo
+   * nivel); no-op si no hay filtro previo. */
+  revertLastFilter: () => void;
 }
 
 /**
@@ -36,6 +51,7 @@ export interface SignalState {
  */
 export const useSignalStore = create<SignalState>((set, get) => ({
   signal: null,
+  previousSignal: null,
   error: null,
   status: 'idle',
   loadFromText: (text) => {
@@ -47,12 +63,25 @@ export const useSignalStore = create<SignalState>((set, get) => ({
     }
   },
   setError: (error) => set({ signal: null, status: 'error', error }),
-  reset: () => set({ signal: null, status: 'idle', error: null }),
+  reset: () => set({ signal: null, previousSignal: null, status: 'idle', error: null }),
   cropToRange: (range) => {
     const { signal } = get();
     if (!signal) return;
     const cropped = cropSignal(signal, range);
     if (!cropped) return;
     set({ signal: cropped });
+  },
+  applyFilter: async (filterType, params) => {
+    const { signal } = get();
+    if (!signal) return { ok: false, error: 'No hay una señal cargada' };
+    const result = await applyFilterApi(signal, filterType, params);
+    if (!result.ok) return { ok: false, error: result.error };
+    set({ previousSignal: signal, signal: result.signal });
+    return { ok: true };
+  },
+  revertLastFilter: () => {
+    const { previousSignal } = get();
+    if (!previousSignal) return;
+    set({ signal: previousSignal, previousSignal: null });
   },
 }));
