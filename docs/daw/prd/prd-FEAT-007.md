@@ -10,8 +10,8 @@
 
 | Sub-ticket | Title | PRD | Dependencies | Status |
 |---|---|---|---|---|
-| FEAT-007a | Esqueleto del backend .NET | prd-FEAT-007a.md | none | active |
-| FEAT-007b | Filtros DSP (RF-10/RF-11) | prd-FEAT-007b.md | depends on a | pending |
+| FEAT-007a | Esqueleto del backend .NET | prd-FEAT-007a.md | none | done — PR #12 mergeado a main (49d2672) |
+| FEAT-007b | Filtros DSP (RF-10/RF-11) | prd-FEAT-007b.md | depends on a | active |
 
 ## Suggested implementation order
 a → b
