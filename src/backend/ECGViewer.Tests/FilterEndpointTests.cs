@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ECGViewer.Api.Filters;
@@ -244,5 +246,87 @@ public class FilterEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RejectsPayloadWithExtraFieldPerSample()
+    {
+        // NFR-02: un campo extra por muestra simula una tercera "columna"/canal que el DTO
+        // SampleDto (t, mV) no espera. Se arma el JSON crudo a mano porque el record SampleDto en
+        // C# no permite agregar un campo extra accidentalmente.
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        const string json = """
+        {
+          "samples": [
+            {"t": 0.0, "mV": 1.0, "channel2": 2.0},
+            {"t": 0.005, "mV": 1.1, "channel2": 2.1},
+            {"t": 0.01, "mV": 1.2, "channel2": 2.2}
+          ],
+          "filterType": "LowPass",
+          "cutoff": 10
+        }
+        """;
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync("/api/filters/apply", content, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RejectsPayloadOverSampleLimit()
+    {
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 500_001, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.LowPass, Cutoff: 10, CutoffLow: null, CutoffHigh: null, Window: null, PolynomialDegree: null);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task BandPass_RejectsLowGreaterOrEqualHigh()
+    {
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 512, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.BandPass, Cutoff: null, CutoffLow: 40, CutoffHigh: 10, Window: null, PolynomialDegree: null);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RejectsRequestWithMissingRequiredParameter()
+    {
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 512, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.LowPass, Cutoff: null, CutoffLow: null, CutoffHigh: null, Window: null, PolynomialDegree: null);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RespondsUnder500msForOneMinuteSignal()
+    {
+        // NFR-01: 1 minuto de señal a 250Hz (frecuencia de muestreo ECG realista) = 15000 muestras.
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 250, count: 15_000, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.LowPass, Cutoff: 10, CutoffLow: null, CutoffHigh: null, Window: null, PolynomialDegree: null);
+
+        var stopwatch = Stopwatch.StartNew();
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+        stopwatch.Stop();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(stopwatch.ElapsedMilliseconds < 500, $"Expected < 500ms, took {stopwatch.ElapsedMilliseconds}ms");
     }
 }
