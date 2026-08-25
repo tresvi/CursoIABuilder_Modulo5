@@ -5,7 +5,7 @@
 | Ticket | FEAT-004 |
 | Tracker | none |
 | Date | 2026-08-23 |
-| PRD loops | 1 |
+| PRD loops | 2 |
 
 ## Context and Problem
 
@@ -27,11 +27,15 @@ punto donde se presiona el mouse y el punto donde se suelta, sin modificar la se
   herramienta "Regla", mutuamente excluyente con las demás herramientas de interacción sobre el
   gráfico (Zoom, Marcar).
 - FR-02: El sistema debe, mientras la herramienta "Regla" está activa, mostrar en vivo sobre el
-  gráfico (línea + tooltip) la diferencia de tiempo (Δt) y de amplitud (Δamplitud) entre el punto
-  inicial y la posición actual del cursor, mientras el usuario arrastra el mouse.
+  gráfico (rectángulo + tooltip, reemplazando la representación anterior en cada actualización) la
+  diferencia de tiempo (Δt) y de amplitud (Δamplitud) entre el punto inicial y la posición actual
+  del cursor, mientras el usuario arrastra el mouse. El rectángulo va del punto inicial al punto
+  actual del arrastre (mismo mecanismo de resaltado que usa `drawSelection` en Zoom/Recorte,
+  adaptado a dos ejes en vez de solo el eje X), sin acumular dibujos previos de la misma medición
+  (corregido en PRD loop 2, ver FIX-002).
 - FR-03: El sistema debe, al soltar el mouse tras arrastrar con "Regla" activa, dejar visible sobre
-  el gráfico el resultado de la última medición (línea + tooltip con Δt/Δamplitud), sin modificar la
-  señal.
+  el gráfico el resultado de la última medición (rectángulo + tooltip con Δt/Δamplitud), sin
+  modificar la señal.
 - FR-04: El sistema debe reemplazar la medición visible por la nueva cada vez que el usuario mide de
   nuevo (arrastra otra vez) con "Regla" activa.
 - FR-05: El sistema debe ocultar la medición visible al desactivar la herramienta "Regla" o al

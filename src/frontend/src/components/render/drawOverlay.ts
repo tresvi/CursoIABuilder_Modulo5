@@ -36,11 +36,15 @@ export function drawSelection(
 }
 
 /**
- * Dibuja la Regla: una línea entre `(x0,y0)` y `(x1,y1)` sobre el overlay (mismo
- * color/grosor que `drawSelection` usa para el rectángulo de Zoom) más un tooltip de
- * texto cerca de `(x1,y1)` con Δt/Δamplitud. Los deltas se muestran siempre en valor
- * absoluto: la Regla mide una diferencia, no una dirección de arrastre. El texto se
- * pinta exclusivamente vía `ctx.fillText`, mismo patrón de `drawMarkers.ts` (FEAT-003a).
+ * Dibuja la Regla: un rectángulo entre `(x0,y0)` y `(x1,y1)` sobre el overlay (mismo
+ * patrón fillRect+strokeRect que `drawSelection` usa para el rectángulo de Zoom, pero
+ * acotado a los dos ejes en vez de solo X con altura completa) más un tooltip de texto
+ * cerca de `(x1,y1)` con Δt/Δamplitud. Los deltas se muestran siempre en valor absoluto:
+ * la Regla mide una diferencia, no una dirección de arrastre. El texto se pinta
+ * exclusivamente vía `ctx.fillText`, mismo patrón de `drawMarkers.ts` (FEAT-003a).
+ * Limpia el overlay antes de trazar para no acumular mediciones anteriores del mismo
+ * arrastre (FIX-002: antes solo se limpiaba entre arrastres, en `onMouseDown`, nunca
+ * entre los sucesivos `mousemove` de un mismo arrastre).
  */
 export function drawRuler(
   ctx: CanvasRenderingContext2D,
@@ -52,13 +56,19 @@ export function drawRuler(
   deltaT: number,
   deltaAmplitude: number,
 ): void {
+  clearOverlay(ctx, dims);
+
+  const loX = Math.min(x0, x1);
+  const loY = Math.min(y0, y1);
+  const width = Math.abs(x1 - x0);
+  const height = Math.abs(y1 - y0);
+
   ctx.save();
+  ctx.fillStyle = SELECTION_FILL;
+  ctx.fillRect(loX, loY, width, height);
   ctx.strokeStyle = SELECTION_STROKE;
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x0, y0);
-  ctx.lineTo(x1, y1);
-  ctx.stroke();
+  ctx.strokeRect(loX, loY, width, height);
 
   const deltaTText = `Δt: ${Math.abs(deltaT).toFixed(3)}s`;
   const deltaAmplitudeText = `ΔmV: ${Math.abs(deltaAmplitude).toFixed(2)}mV`;
