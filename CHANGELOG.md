@@ -50,6 +50,15 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   métrica muestra "N/A" cuando no hay suficientes picos R detectados en la ventana. Cálculo
   enteramente client-side, sin persistencia ni dependencia del backend (RF-10, filtros DSP, aún no
   implementado).
+- FEAT-007a: esqueleto del backend (`src/backend`), primer código server-side del proyecto. Solución
+  .NET 10 con `ECGViewer.Api` (ASP.NET Core Minimal API, `Nullable`/`ImplicitUsings` habilitados) y
+  `ECGViewer.Tests` (xUnit v3). Expone `GET /api/health`, con CORS restringido al origen de
+  desarrollo del front (`http://localhost:5173`, sin comodines) y manejo de excepciones de
+  desarrollo confinado al entorno `Development`. El front suma un cliente HTTP mínimo
+  (`lib/api/client.ts`) que lee `VITE_API_BASE` y un indicador visual (`BackendStatus`,
+  "Backend: conectado"/"Backend: no disponible") que no condiciona el resto de la app — sigue
+  siendo 100% usable sin el backend. Desbloquea RF-10/RF-11 (filtros DSP, próximo sub-ticket
+  FEAT-007b).
 
 ### Fixed
 
