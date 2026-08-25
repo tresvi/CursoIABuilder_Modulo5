@@ -31,17 +31,47 @@ function createCtxStub(): CanvasRenderingContext2D {
 }
 
 describe('drawRuler', () => {
-  it('dibuja una línea entre los dos puntos dados', () => {
+  it('dibuja un rectángulo entre los dos puntos dados', () => {
     const ctx = createCtxStub();
-    const moveToSpy = vi.fn();
-    const lineToSpy = vi.fn();
-    ctx.moveTo = moveToSpy;
-    ctx.lineTo = lineToSpy;
+    const fillRectSpy = vi.fn();
+    const strokeRectSpy = vi.fn();
+    ctx.fillRect = fillRectSpy;
+    ctx.strokeRect = strokeRectSpy;
 
     drawRuler(ctx, 10, 20, 100, 200, DIMS, 0.5, 1.2);
 
-    expect(moveToSpy).toHaveBeenCalledWith(10, 20);
-    expect(lineToSpy).toHaveBeenCalledWith(100, 200);
+    expect(fillRectSpy).toHaveBeenCalledWith(10, 20, 90, 180);
+    expect(strokeRectSpy).toHaveBeenCalledWith(10, 20, 90, 180);
+  });
+
+  it('normaliza el rectángulo cuando el arrastre va de derecha a izquierda / abajo hacia arriba', () => {
+    const ctx = createCtxStub();
+    const fillRectSpy = vi.fn();
+    ctx.fillRect = fillRectSpy;
+
+    drawRuler(ctx, 100, 200, 10, 20, DIMS, 0.5, 1.2);
+
+    expect(fillRectSpy).toHaveBeenCalledWith(10, 20, 90, 180);
+  });
+
+  it('limpia el overlay antes de dibujar, para no acumular mediciones anteriores (FIX-002)', () => {
+    const ctx = createCtxStub();
+    const callOrder: string[] = [];
+    ctx.clearRect = () => {
+      callOrder.push('clearRect');
+    };
+    ctx.fillRect = () => {
+      callOrder.push('fillRect');
+    };
+    ctx.strokeRect = () => {
+      callOrder.push('strokeRect');
+    };
+
+    drawRuler(ctx, 10, 20, 100, 200, DIMS, 0.5, 1.2);
+
+    expect(callOrder[0]).toBe('clearRect');
+    expect(callOrder).toContain('fillRect');
+    expect(callOrder).toContain('strokeRect');
   });
 
   it('reusa el color/grosor de trazo de drawSelection, sin definir una paleta nueva', () => {
