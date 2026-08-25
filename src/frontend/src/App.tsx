@@ -2,6 +2,7 @@ import { BackendStatus } from '@/components/BackendStatus';
 import { ChartToolbar } from '@/components/ChartToolbar';
 import { CsvUpload } from '@/components/CsvUpload';
 import { ECGChart } from '@/components/ECGChart';
+import { FilterPanel } from '@/components/FilterPanel';
 import { MarkerForm } from '@/components/MarkerForm';
 import { MarkerList } from '@/components/MarkerList';
 import { MetricsPanel } from '@/components/MetricsPanel';
@@ -14,6 +15,7 @@ function App() {
         <BackendStatus />
         <CsvUpload />
         <ChartToolbar />
+        <FilterPanel />
         <ECGChart />
         <MetricsPanel />
         <MarkerList />
