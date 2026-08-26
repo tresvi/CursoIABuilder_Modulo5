@@ -59,6 +59,18 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   "Backend: conectado"/"Backend: no disponible") que no condiciona el resto de la app — sigue
   siendo 100% usable sin el backend. Desbloquea RF-10/RF-11 (filtros DSP, próximo sub-ticket
   FEAT-007b).
+- FEAT-007b (RF-10/RF-11): 7 filtros DSP aplicados en el backend — Pasa Bajo, Pasa Alto, Pasa
+  Banda y Notch (vía `FftSharp.Filter`, con zero-padding para señales de largo no potencia de 2),
+  más Media Móvil, Mediana Móvil y Savitzky-Golay (implementación propia). Nuevo endpoint
+  `POST /api/filters/apply`, con validación server-side (autoritativa) de Nyquist, rango
+  low/high, ventana entera positiva y ≤ total de muestras, grado < ventana, y un límite de
+  500.000 muestras por payload (mitigación de denegación de servicio; ver nota en el backlog —
+  este límite es temporal y deberá revisarse/ampliarse a futuro). Rechazo explícito de payload
+  multicanal (`UnmappedMemberHandling.Disallow`). En el front, panel `FilterPanel` con combo de
+  7 tipos, campos dinámicos con validación client-side (UX, replica Nyquist/rango/ventana/grado
+  sin reemplazar la validación del backend), y encadenado aditivo de filtros con posibilidad de
+  revertir un único nivel (`signalStore.applyFilter`/`revertLastFilter`, sin llamada al backend
+  al revertir).
 
 ### Fixed
 
