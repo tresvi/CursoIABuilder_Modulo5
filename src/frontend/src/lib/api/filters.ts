@@ -41,6 +41,13 @@ export async function applyFilter(
 
     if (res.status === 200) {
       const body = (await res.json()) as { samples: ECGSignal['samples'] };
+      const isValidSample = (s: { t?: unknown; mV?: unknown }) =>
+        Number.isFinite(s.t) && Number.isFinite(s.mV);
+
+      if (!Array.isArray(body.samples) || !body.samples.every(isValidSample)) {
+        return { ok: false, error: 'Respuesta del backend con formato inesperado' };
+      }
+
       return { ok: true, signal: { samples: body.samples } };
     }
 

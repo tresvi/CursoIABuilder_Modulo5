@@ -83,3 +83,11 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   Recorte) en vez de una línea diagonal.
 - FIX-003: el tooltip Δt/ΔmV de la herramienta Regla se dibujaba con una fuente de 10px, chica y
   difícil de leer. Ahora usa 20px.
+- FIX-004: al aplicar cualquier filtro DSP, la señal desaparecía del gráfico (ejes y grilla
+  seguían visibles) aunque el backend respondiera 200. El campo `MV` de `SampleDto` se serializaba
+  como `"mv"` (la naming policy camelCase de .NET colapsa un nombre todo en mayúsculas a
+  minúsculas), mientras el front esperaba `"mV"` y confiaba en un cast de TypeScript sin validar en
+  runtime; la señal filtrada llegaba con `mV=undefined`, que se propagaba como `NaN` hasta el
+  render de Canvas 2D, que fallaba en silencio. Ahora el backend fija el wire format con
+  `[JsonPropertyName("mV")]`, y el cliente HTTP del front valida el shape de la respuesta antes de
+  aceptarla.
