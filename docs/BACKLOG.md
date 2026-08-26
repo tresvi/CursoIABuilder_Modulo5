@@ -179,6 +179,17 @@ como se hizo con FEAT-007 → FEAT-007a/b.
   `dotnet format --verify-no-changes`. Propuesta: normalizar los 9 archivos con `npm run format` y
   agregar `npx prettier --check` y `npm run build` al job `frontend`.
 
+- **El CI de FEAT-008 sigue sin haberse ejecutado nunca de punta a punta.** En el PR #17 (FEAT-009)
+  el workflow se disparó pero murió en `startup_failure` a los 0 s, sin llegar a crear checks.
+  Descartado lo que depende del repo: Actions habilitado, workflow `active`, `ci.yml` con YAML
+  válido e **idéntico al de `main`** (que sí corrió bien en los PRs #15 y #16). La causa aparente es
+  que GitHub nunca pudo calcular el merge del PR (`mergeable: null`, `mergeable_state: "unknown"`
+  sostenido ~20 min), y los workflows de `pull_request` corren contra ese merge commit; por eso
+  además `gh run rerun` lo rechaza con "its workflow file may be broken". FEAT-008 ya se había
+  cerrado con esta misma confirmación pendiente. Formas de forzar el recálculo: cerrar y reabrir el
+  PR, o pushear un commit nuevo. Vale la pena evaluar agregar `workflow_dispatch` al workflow para
+  poder dispararlo a mano sin depender del merge commit.
+
 ## Notas de uso
 
 Cuando se arranque una nueva sesión, revisar este archivo y preguntar al usuario si quiere convertir
