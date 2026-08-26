@@ -207,3 +207,19 @@ describe('App — secciones "Herramientas" y "Filtros" del sidebar (FEAT-009, Bl
     });
   });
 });
+
+describe('App — sección "Archivo" y herramienta "Desplazar" (FEAT-009, Block 4)', () => {
+  beforeEach(() => {
+    resetAll();
+  });
+
+  it('la sección "Herramientas" incluye "Desplazar" deshabilitado (decisión de diseño 5)', () => {
+    render(<App />);
+
+    const tools = within(sidebarSection('Herramientas'));
+    const pan = tools.getByRole('button', { name: 'Desplazar' });
+
+    expect(pan).toBeDisabled();
+    expect(pan).toHaveAttribute('aria-disabled', 'true');
+  });
+});
