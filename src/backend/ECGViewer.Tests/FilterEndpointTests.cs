@@ -74,6 +74,26 @@ public class FilterEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task AppliesLowPass_ResponseBodyUsesMvCasing()
+    {
+        // Regression test for FIX-004: la naming policy camelCase de .NET colapsa un nombre de
+        // propiedad todo en mayúsculas (MV) a "mv" en vez de "mV". Este test lee el JSON crudo de
+        // la respuesta (sin PropertyNameCaseInsensitive) para verificar el wire format real, que es
+        // exactamente lo que el frontend consume sin normalizar casing.
+        var client = _factory.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var samples = BuildSyntheticSignal(sampleRateHz: 200, count: 16, lowFreqHz: 2, highFreqHz: 40);
+        var request = new FilterRequest(samples, FilterType.LowPass, Cutoff: 10, CutoffLow: null, CutoffHigh: null, Window: null, PolynomialDegree: null);
+
+        var response = await client.PostAsJsonAsync("/api/filters/apply", request, JsonOptions, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var rawBody = await response.Content.ReadAsStringAsync(cancellationToken);
+        Assert.Contains("\"mV\"", rawBody);
+        Assert.DoesNotContain("\"mv\"", rawBody);
+    }
+
+    [Fact]
     public async Task HighPass_ReturnsFilteredSignal()
     {
         var client = _factory.CreateClient();

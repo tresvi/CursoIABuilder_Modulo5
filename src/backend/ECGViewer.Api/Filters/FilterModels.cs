@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace ECGViewer.Api.Filters;
 
 public enum FilterType
@@ -11,7 +13,7 @@ public enum FilterType
     SavitzkyGolay,
 }
 
-public record SampleDto(double T, double MV);
+public record SampleDto(double T, [property: JsonPropertyName("mV")] double MV);
 
 public record FilterRequest(
     List<SampleDto> Samples,

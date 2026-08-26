@@ -36,6 +36,19 @@ describe('applyFilter', () => {
     expect(result).toEqual({ ok: true, signal: { samples: filteredSamples } });
   });
 
+  it('devuelve { ok: false, error } cuando el backend responde 200 con casing incorrecto (mv en vez de mV)', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ samples: [{ t: 0, mv: 0.15 }] }),
+    } as Response);
+
+    const { applyFilter } = await import('./filters');
+    const result = await applyFilter(signal, 'LowPass', { cutoff: 49.5 });
+
+    expect(result).toEqual({ ok: false, error: 'Respuesta del backend con formato inesperado' });
+  });
+
   it('devuelve { ok: false, error } cuando el backend responde 400', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
