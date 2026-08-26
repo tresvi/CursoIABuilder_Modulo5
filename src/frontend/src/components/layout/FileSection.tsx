@@ -1,4 +1,5 @@
 import { CsvUpload } from '@/components/CsvUpload';
+import { ExampleLoader } from '@/components/ExampleLoader';
 import { DisabledMenuItem } from './DisabledMenuItem';
 
 /**
@@ -23,8 +24,16 @@ export function FileSection() {
         <CsvUpload />
       </div>
 
-      {/* Hueco reservado para "Cargar ejemplo" (FR-07): el `ExampleLoader` lo monta
-          el Block 5 aquí, entre "Abrir CSV" y "Importar XLSX". */}
+      {/* "Cargar ejemplo" (FR-07): entre "Abrir CSV" e "Importar XLSX", según el
+          orden de `docs/UI/UI_Without_any_ECG_Loaded.PNG`. Va con `showError={false}`
+          porque en esta sección el dueño del mensaje de error es `CsvUpload` (Block 4,
+          "Error handling"): si ambos lo renderizaran, un fallo al traer un ejemplo
+          mostraría dos `role="alert"` idénticos y el lector de pantalla lo anunciaría
+          dos veces. */}
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium text-slate-200">Cargar ejemplo</p>
+        <ExampleLoader showError={false} />
+      </div>
 
       <div className="flex flex-col gap-2">
         <DisabledMenuItem label="Importar XLSX" />

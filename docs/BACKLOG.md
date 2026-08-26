@@ -78,6 +78,61 @@ como se hizo con FEAT-007 → FEAT-007a/b.
   existe en la app ni está especificado en ningún bloque de la spec de FEAT-009.
 - **`accept=".csv,text/csv"` de `CsvUpload.tsx` sin cobertura.** Ningún test lo asevera: se puede
   borrar y la suite sigue verde. Gap preexistente en `main`, no una regresión de FEAT-009.
+- **El duplicado de alerta vuelve en Block 6 por una causa estructural.** `CsvUpload.tsx:116`
+  renderiza el error del store de forma incondicional, y `CsvUpload` está siempre montado en el
+  sidebar. FEAT-009 (Block 5) lo resolvió para la sección "Archivo" pasándole `showError={false}`
+  al `ExampleLoader` de ahí, pero cuando `EmptyState` (Block 6) monte su propio `ExampleLoader` con
+  `showError` en `true`, un fallo al traer un ejemplo volverá a mostrar dos `role="alert"` con el
+  mismo texto (el del sidebar y el del panel central), que un lector de pantalla anuncia dos veces.
+  La solución limpia es acotar el alert de `CsvUpload` a los errores que él mismo originó, pero el
+  Block 5 de `docs/daw/specs/spec-FEAT-009.md` fija que `CsvUpload` se modifica "sin cambio de
+  textos ni de comportamiento", así que no se puede hacer dentro de FEAT-009.
+  El duplicado **no es sólo del camino "Cargar ejemplo"**: también aparece cuando el fallo lo
+  origina "Abrir CSV". Con `EmptyState` montado (sin señal cargada), un CSV inválido elegido en el
+  sidebar deja el error en el store y `CsvUpload` lo anuncia; si además ese error coincide en valor
+  con el del último intento del `ExampleLoader` del panel central, ese segundo control también lo
+  muestra. Es la misma causa estructural vista desde el otro extremo.
+- **La atribución de errores del `ExampleLoader` es por valor y tiene un límite conocido.**
+  `ExampleLoader.tsx` decide si una alerta es suya comparando el error actual del store contra el
+  `SignalError` que quedó tras su propio intento. Eso distingue tipos distintos (los errores del
+  parser son objetos nuevos en cada parseo; `'read-error'` no es igual a `{ kind: 'multichannel' }`),
+  pero **dos errores del mismo literal de string son indistinguibles**: si "Abrir CSV" produce su
+  propio `'read-error'` (o `'file-too-large'`), el `ExampleLoader` lo toma como propio y lo anuncia.
+  La solución de fondo es un contador monótono de mutación en `signalStore` (`errorSeq`/`mutationId`,
+  incrementado en `loadFromText`, `setError` y `reset`): el componente guarda el seq de su propia
+  carga y compara contra el actual, con lo que el guard queda **derivado** del store y se auto-limpia
+  en cualquier transición ajena, incluida `error → error`. Exige tocar `signalStore.ts`, que está
+  fuera de la lista de archivos del Block 5 de `docs/daw/specs/spec-FEAT-009.md`, así que queda para
+  un ticket propio (el mismo que resuelva el duplicado de alerta de arriba).
+- **Condición de carrera entre instancias de `ExampleLoader`.** El flag `isLoading`
+  (`ExampleLoader.tsx`) es estado por instancia: con una sola instancia no hay carrera, porque el
+  `disabled` del `<select>` bloquea un segundo cambio mientras carga. Block 6 monta una segunda
+  instancia en `EmptyState`, simultánea a la de `FileSection`: deshabilitar una no deshabilita la
+  otra, así que pueden convivir dos `fetch` concurrentes y gana el que resuelva último, que puede
+  no ser la última elección del usuario. Falta un token de secuencia (o un `AbortController`) que
+  descarte el resultado de un intento superado.
+- **`fetch` fuera de `lib/api/`.** `src/frontend/src/lib/ecg/samples.ts:68` es el único `fetch` de
+  `lib/ecg/`, carpeta que en todo el resto es pura y sin I/O; el acceso a red vive en `lib/api/`.
+  No es una desprolijidad de la implementación: la ruta del archivo la prescribe la spec de FEAT-009
+  (línea 327), así que moverlo sería desviarse de la spec, no corregirla. Revisar al abrir el
+  próximo ticket que toque esa capa.
+- **`signalErrorMessage` es presentación viviendo en la capa de dominio.**
+  `src/frontend/src/lib/ecg/signalErrorMessage.ts` mapea errores a copy de UI en español e importa
+  el tipo `SignalError` desde `@/state/signalStore`, invirtiendo la dirección de dependencia
+  habitual (no hay ciclo en runtime porque es `import type`). Su lugar natural sería
+  `src/components/` o un `src/lib/ui/`. La ruta también la fija la spec de FEAT-009, por lo que el
+  movimiento queda para un ticket propio.
+- **`src/frontend/public/samples/README.md` se publica en el build.** Vite no restringe `publicDir`:
+  todo lo que está bajo `public/` se copia tal cual, así que ese README queda servible en
+  `/samples/README.md` en producción. No expone secretos, pero sí rutas internas del repo y un
+  documento de mantenimiento que no tiene por qué ser público. Alternativas: mover la nota a
+  `docs/`, o excluir el archivo en el build.
+- **Sin guarda de deriva entre `ECGSamples/CSV/` y `src/frontend/public/samples/`.** Hoy los tres
+  CSV son byte-idénticos (verificado con `cmp`), pero la copia es manual (decisión de diseño 1 de
+  la spec de FEAT-009) y el único test de guarda (`src/frontend/src/lib/ecg/samples.test.ts:39`)
+  valida tamaño ≤ 260 KB, no equivalencia: si alguien regenera la fuente de verdad y olvida
+  re-copiar, no falla nada y la app sirve la versión vieja en silencio. Una aserción de igualdad de
+  bytes (o de hash) entre ambas carpetas cerraría el hueco sin dependencias nuevas ni paso de build.
 - **Redacción imprecisa en el threat model de FEAT-009.** `docs/daw/security/threat-FEAT-009.md:114`
   afirma que R-04 queda "verificada por el test de AC-08"; en rigor ningún test conductual puede
   distinguir un `disabled` con `onClick` de uno sin él, porque React no entrega eventos de mouse a

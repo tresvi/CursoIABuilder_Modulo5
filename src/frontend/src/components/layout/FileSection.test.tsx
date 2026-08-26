@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { FileSection } from './FileSection';
 import { DisabledMenuItem } from './DisabledMenuItem';
 import { useMarkersStore } from '@/state/markersStore';
@@ -34,8 +34,12 @@ beforeEach(() => {
   useMarkersStore.setState({ markers: [], formState: null });
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('FileSection — acciones de la sección "Archivo" (FEAT-009, Block 4)', () => {
-  it('muestra "Abrir CSV" habilitado y los cuatro ítems de RF-12/13/15 deshabilitados (AC-02 parcial: "Cargar ejemplo" se cubre en Block 5)', () => {
+  it('muestra "Abrir CSV" y "Cargar ejemplo" habilitados y los cuatro ítems de RF-12/13/15 deshabilitados (AC-02)', () => {
     render(<FileSection />);
     const section = within(fileSection());
 
@@ -48,8 +52,13 @@ describe('FileSection — acciones de la sección "Archivo" (FEAT-009, Block 4)'
     // WCAG 1.3.1). El input ya tiene nombre accesible propio.
     expect(section.queryByRole('heading')).toBeNull();
 
-    // "Cargar ejemplo" (FR-07) lo monta el Block 5 en el hueco reservado de esta
-    // sección; su aserción de "habilitado" se agrega ahí junto con `ExampleLoader`.
+    // "Cargar ejemplo" (FR-07): el control real habilitado es el `<select>` de
+    // `ExampleLoader`, cuyo nombre accesible es su `aria-label`. La aserción va acá y no
+    // en `ExampleLoader.test.tsx` porque el sujeto de AC-02 es la composición de la
+    // sección: si `FileSection` dejara de montarlo, el test del componente aislado
+    // seguiría verde.
+    expect(section.getByText('Cargar ejemplo')).toBeInTheDocument();
+    expect(section.getByLabelText('Cargar ejemplo')).toBeEnabled();
 
     for (const label of DISABLED_ITEMS) {
       const item = section.getByRole('button', { name: label });
@@ -104,6 +113,26 @@ describe('FileSection — acciones de la sección "Archivo" (FEAT-009, Block 4)'
 
     const alert = await section.findByRole('alert');
     expect(alert).toHaveTextContent(/solo se soporta un canal/i);
+    expect(useSignalStore.getState().signal).toBeNull();
+  });
+
+  it('un fallo al cargar un ejemplo muestra UNA sola alerta en la sección', async () => {
+    // Fetch mockeado: los tests nunca salen a la red (requisito del Block 5).
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response));
+    render(<FileSection />);
+    const section = within(fileSection());
+
+    fireEvent.change(section.getByLabelText('Cargar ejemplo'), {
+      target: { value: 'ECG_20_Seg_FILTRADO' },
+    });
+
+    // `CsvUpload` y `ExampleLoader` conviven en la sección y ambos ven el error del
+    // store: si los dos lo renderizan, `role="alert"` (aria-live assertive) anuncia el
+    // mismo mensaje dos veces. El dueño del mensaje acá es `CsvUpload`.
+    await waitFor(() => expect(section.getAllByRole('alert')).toHaveLength(1));
+    expect(section.getByRole('alert')).toHaveTextContent(
+      'No se pudo leer el archivo. Intente nuevamente.',
+    );
     expect(useSignalStore.getState().signal).toBeNull();
   });
 
