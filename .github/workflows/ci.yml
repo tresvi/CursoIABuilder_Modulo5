@@ -27,11 +27,14 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src/backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: dotnet restore src/backend/ECGViewer.sln
-      - run: dotnet format src/backend/ECGViewer.sln --verify-no-changes
-      - run: dotnet test src/backend/ECGViewer.sln
+      - run: dotnet restore ECGViewer.sln
+      - run: dotnet format ECGViewer.sln --verify-no-changes
+      - run: dotnet test ECGViewer.sln
