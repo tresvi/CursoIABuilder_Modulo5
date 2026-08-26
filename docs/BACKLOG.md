@@ -78,20 +78,22 @@ como se hizo con FEAT-007 → FEAT-007a/b.
   existe en la app ni está especificado en ningún bloque de la spec de FEAT-009.
 - **`accept=".csv,text/csv"` de `CsvUpload.tsx` sin cobertura.** Ningún test lo asevera: se puede
   borrar y la suite sigue verde. Gap preexistente en `main`, no una regresión de FEAT-009.
-- **El duplicado de alerta vuelve en Block 6 por una causa estructural.** `CsvUpload.tsx:116`
-  renderiza el error del store de forma incondicional, y `CsvUpload` está siempre montado en el
-  sidebar. FEAT-009 (Block 5) lo resolvió para la sección "Archivo" pasándole `showError={false}`
-  al `ExampleLoader` de ahí, pero cuando `EmptyState` (Block 6) monte su propio `ExampleLoader` con
-  `showError` en `true`, un fallo al traer un ejemplo volverá a mostrar dos `role="alert"` con el
-  mismo texto (el del sidebar y el del panel central), que un lector de pantalla anuncia dos veces.
-  La solución limpia es acotar el alert de `CsvUpload` a los errores que él mismo originó, pero el
-  Block 5 de `docs/daw/specs/spec-FEAT-009.md` fija que `CsvUpload` se modifica "sin cambio de
-  textos ni de comportamiento", así que no se puede hacer dentro de FEAT-009.
-  El duplicado **no es sólo del camino "Cargar ejemplo"**: también aparece cuando el fallo lo
-  origina "Abrir CSV". Con `EmptyState` montado (sin señal cargada), un CSV inválido elegido en el
-  sidebar deja el error en el store y `CsvUpload` lo anuncia; si además ese error coincide en valor
-  con el del último intento del `ExampleLoader` del panel central, ese segundo control también lo
-  muestra. Es la misma causa estructural vista desde el otro extremo.
+- **El alert de `CsvUpload` es del store, no del control que originó el fallo.**
+  `CsvUpload.tsx:116` renderiza el error del `signalStore` de forma incondicional, y `CsvUpload`
+  está siempre montado en el sidebar: cualquier fallo de carga lo anuncia él, lo haya originado o
+  no. FEAT-009 lo fue conteniendo caso por caso pasando `showError={false}` a los `ExampleLoader`
+  que conviven con él — el de la sección "Archivo" (Block 5) y el del `EmptyState` (Block 6,
+  `components/layout/EmptyState.tsx`) —, así que hoy **no hay duplicado**: hay un único dueño del
+  mensaje y un test que lo asevera (`src/App.test.tsx`, "un fallo al cargar un ejemplo desde el
+  estado vacío muestra UNA sola alerta"). Lo que sigue vigente es la causa: mientras el alert
+  dependa del store y no del origen, cada control nuevo que quiera mostrar errores tendrá que
+  apagarse a mano, y basta olvidarlo una vez para volver a tener dos `role="alert"` con el mismo
+  texto (`aria-live="assertive"`: el lector de pantalla los anuncia dos veces, interrumpiéndose).
+  Tampoco es un problema de un solo camino: el fallo puede originarlo "Abrir CSV" tanto como
+  "Cargar ejemplo", y en ambos casos el store queda igual. La solución limpia es acotar el alert de
+  `CsvUpload` a los errores que él mismo originó, pero el Block 5 de
+  `docs/daw/specs/spec-FEAT-009.md` fija que `CsvUpload` se modifica "sin cambio de textos ni de
+  comportamiento", así que no se puede hacer dentro de FEAT-009.
 - **La atribución de errores del `ExampleLoader` es por valor y tiene un límite conocido.**
   `ExampleLoader.tsx` decide si una alerta es suya comparando el error actual del store contra el
   `SignalError` que quedó tras su propio intento. Eso distingue tipos distintos (los errores del
@@ -103,7 +105,7 @@ como se hizo con FEAT-007 → FEAT-007a/b.
   carga y compara contra el actual, con lo que el guard queda **derivado** del store y se auto-limpia
   en cualquier transición ajena, incluida `error → error`. Exige tocar `signalStore.ts`, que está
   fuera de la lista de archivos del Block 5 de `docs/daw/specs/spec-FEAT-009.md`, así que queda para
-  un ticket propio (el mismo que resuelva el duplicado de alerta de arriba).
+  un ticket propio (el mismo que acote el alert de `CsvUpload` a su propio origen, arriba).
 - **Condición de carrera entre instancias de `ExampleLoader`.** El flag `isLoading`
   (`ExampleLoader.tsx`) es estado por instancia: con una sola instancia no hay carrera, porque el
   `disabled` del `<select>` bloquea un segundo cambio mientras carga. Block 6 monta una segunda
@@ -139,6 +141,43 @@ como se hizo con FEAT-007 → FEAT-007a/b.
   elementos deshabilitados. La garantía real la dan el tipo de props de `DisabledMenuItem` (no
   admite handlers) y la guarda de compilación `@ts-expect-error` de `FileSection.test.tsx`.
   Corregir la redacción cuando corresponda tocar ese artefacto (es de PLAN).
+- **Dos `<select aria-label="Cargar ejemplo">` simultáneos en el estado vacío.** Sin señal cargada
+  conviven el `ExampleLoader` de `FileSection` (sidebar) y el de `EmptyState` (panel central), y
+  ambos toman su nombre accesible del `aria-label` hardcodeado en `ExampleLoader.tsx:115`. Un lector
+  de pantalla anuncia dos combos idénticos sin forma de distinguirlos, y a nivel `App` un
+  `getByLabelText('Cargar ejemplo')` sin `within()` tira "found multiple elements". Además
+  materializa la carrera multi-instancia anotada más abajo, que hasta Block 6 era hipotética:
+  `isLoading` es estado por instancia, así que una puede quedar en "Cargando…" mientras la otra
+  sigue habilitada. La solución es un `aria-label` diferenciable por instancia, lo que exige una
+  prop nueva en `ExampleLoader.tsx` — archivo del Block 5 de `docs/daw/specs/spec-FEAT-009.md`, y
+  por lo tanto fuera del alcance del Block 6.
+- **Barra inferior con Fs / Duración / Muestras.** La referencia visual
+  (`docs/UI/UI_With_ECG_Loaded.PNG`) muestra una barra al pie con frecuencia de muestreo, duración y
+  cantidad de muestras. No existe en la app ni está especificada en ningún bloque de la spec de
+  FEAT-009. Candidata a FEAT-010.
+- **Encabezado: formato de duración y badge "Analizado".** La referencia muestra la duración como
+  `00:00:20` y un badge verde "Analizado"; `TopBar.tsx:26` muestra `20.0 s` y no tiene badge. Es del
+  Block 2 de FEAT-009 y no había quedado anotado.
+- **El estado vacío de `ECGChart` quedó inalcanzable desde la app.** Con `MainPanel` (Block 6)
+  decidiendo la rama según `signalStore.signal`, `ECGChart` ya nunca se monta sin señal: su propio
+  estado vacío (`ECGChart.tsx:255-262`, `role="status"`, "Cargá una señal para visualizarla.") es
+  código muerto a nivel aplicación, aunque su cobertura unitaria siga viva
+  (`ECGChart.test.tsx:93`). Quedan dos estados vacíos para el mismo concepto, uno de ellos muerto.
+  No se puede borrar dentro de FEAT-009 porque `ECGChart.tsx` está protegido por NFR-01 y el
+  Principio V de `AGENTS.md`.
+- **`MarkerForm` abierto sobre el estado vacío.** `markersStore` es independiente de `signalStore`:
+  con el formulario abierto en modo `create` y una carga que falla (`setError` deja `signal` en
+  `null`), el diálogo "Nuevo marcador" queda flotando sobre el estado vacío, y confirmarlo agrega un
+  marcador a una señal que ya no está. Es un caso de borde preexistente, pero Block 6 lo vuelve
+  alcanzable por primera vez al montar `MarkerForm` fuera de la rama con señal (a propósito:
+  desmontarlo cerraría en silencio un formulario abierto).
+- **El CI del front no verifica formato ni typecheck.** `.github/workflows/ci.yml` corre
+  `npm run lint` y `npm test` en el job `frontend`, pero NO `npm run build`, así que el
+  `tsc --noEmit` nunca se ejecuta en CI pese a que `AGENTS.md` exige mantenerlo verde. Tampoco hay
+  chequeo de Prettier (`eslint.config.js` no lo integra) y hay 9 archivos preexistentes de
+  `src/frontend/src/` fuera de formato. Es una asimetría con el back, que sí corre
+  `dotnet format --verify-no-changes`. Propuesta: normalizar los 9 archivos con `npm run format` y
+  agregar `npx prettier --check` y `npm run build` al job `frontend`.
 
 ## Notas de uso
 

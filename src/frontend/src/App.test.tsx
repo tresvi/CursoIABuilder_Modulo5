@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { act, render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 import App from './App';
 import { useMarkersStore } from '@/state/markersStore';
@@ -33,7 +33,7 @@ describe('App — smoke de montaje', () => {
     resetAll();
   });
 
-  it('renderiza el heading y monta CsvUpload + ChartToolbar + ECGChart sin errores', () => {
+  it('renderiza el heading y monta CsvUpload + ChartToolbar + el panel principal sin errores', () => {
     render(<App />);
 
     // Heading principal de la aplicación (RF-01), ahora en el sidebar del shell (FEAT-009).
@@ -48,8 +48,9 @@ describe('App — smoke de montaje', () => {
     expect(screen.getByLabelText('Restablecer zoom')).toBeInTheDocument();
     expect(screen.getByLabelText('Mostrar u ocultar rejilla')).toBeInTheDocument();
 
-    // ECGChart está montado: sin señal cargada, muestra el estado vacío (AC-02).
-    expect(screen.getByText('Cargá una señal para visualizarla.')).toBeInTheDocument();
+    // Sin señal cargada, el panel principal muestra el estado vacío de FEAT-009
+    // (Block 6) en vez del trazado: el mensaje de instrucción y el call-to-action.
+    expect(screen.getByRole('region', { name: 'Sin señal cargada' })).toBeInTheDocument();
   });
 
   it('muestra las tres secciones del sidebar ("Archivo", "Herramientas", "Filtros")', () => {
@@ -138,7 +139,7 @@ describe('App — secciones "Herramientas" y "Filtros" del sidebar (FEAT-009, Bl
     expect(filters.getByLabelText('Revertir')).toBeInTheDocument();
   });
 
-  it('activar Zoom desde el sidebar deja activeTool en \'zoom\' igual que antes (AC-11)', () => {
+  it("activar Zoom desde el sidebar deja activeTool en 'zoom' igual que antes (AC-11)", () => {
     render(<App />);
 
     const tools = within(sidebarSection('Herramientas'));
@@ -221,5 +222,68 @@ describe('App — sección "Archivo" y herramienta "Desplazar" (FEAT-009, Block 
 
     expect(pan).toBeDisabled();
     expect(pan).toHaveAttribute('aria-disabled', 'true');
+  });
+});
+
+describe('App — panel principal: estado vacío y estado con señal (FEAT-009, Block 6)', () => {
+  beforeEach(() => {
+    resetAll();
+    // Ningún test sale a la red: el `ExampleLoader` del estado vacío usa `fetch`.
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('sin señal, el panel principal muestra el estado vacío con "Cargar ejemplo" (AC-05)', () => {
+    render(<App />);
+
+    const empty = within(screen.getByRole('region', { name: 'Sin señal cargada' }));
+    expect(empty.getByText(/Cargá un archivo CSV de ECG monocanal/i)).toBeInTheDocument();
+    expect(empty.getByLabelText('Cargar ejemplo')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Gráfico ECG')).not.toBeInTheDocument();
+  });
+
+  it('con señal, el panel principal muestra el trazado y la tarjeta "Métricas" (AC-06)', () => {
+    loadSignal();
+    useViewStore.getState().initForSignal(0, 4);
+
+    render(<App />);
+
+    expect(screen.queryByRole('region', { name: 'Sin señal cargada' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Gráfico ECG')).toBeInTheDocument();
+    // El nombre de la tarjeta lo da su encabezado visible. El envoltorio de la columna
+    // es layout, no estructura: un solo landmark con nombre "Métricas…", no dos
+    // anidados y casi homónimos.
+    expect(screen.getByRole('heading', { name: 'Métricas' })).toBeInTheDocument();
+    expect(screen.getAllByRole('region', { name: /Métricas/ })).toHaveLength(1);
+  });
+
+  it('un fallo al cargar un ejemplo desde el estado vacío muestra UNA sola alerta (la del sidebar)', async () => {
+    // El `ExampleLoader` del estado vacío va con `showError={false}`: el dueño del
+    // mensaje es `CsvUpload`, siempre montado en el sidebar. Dos `role="alert"` con
+    // el mismo texto (aria-live="assertive") se anunciarían dos veces, interrumpiéndose.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('network down'))),
+    );
+
+    render(<App />);
+
+    const empty = within(screen.getByRole('region', { name: 'Sin señal cargada' }));
+    fireEvent.change(empty.getByLabelText('Cargar ejemplo'), {
+      target: { value: 'ECG_20_Seg_FILTRADO' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('alert')).toHaveLength(1);
+    });
+
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts[0]).toHaveTextContent('No se pudo leer el archivo. Intente nuevamente.');
+    // La única alerta vive en el sidebar (CsvUpload), no en el estado vacío.
+    const sidebar = screen.getByRole('complementary', { name: 'Navegación de ECGViewer' });
+    expect(sidebar).toContainElement(alerts[0]);
   });
 });

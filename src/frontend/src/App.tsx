@@ -1,13 +1,10 @@
 import { BackendStatus } from '@/components/BackendStatus';
 import { ChartToolbar } from '@/components/ChartToolbar';
-import { ECGChart } from '@/components/ECGChart';
 import { FilterPanel } from '@/components/FilterPanel';
-import { MarkerForm } from '@/components/MarkerForm';
-import { MarkerList } from '@/components/MarkerList';
-import { MetricsPanel } from '@/components/MetricsPanel';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DisabledMenuItem } from '@/components/layout/DisabledMenuItem';
 import { FileSection } from '@/components/layout/FileSection';
+import { MainPanel } from '@/components/layout/MainPanel';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/components/layout/SidebarSection';
 
@@ -37,13 +34,10 @@ function App() {
     <AppLayout sidebar={sidebar}>
       <div className="flex flex-col gap-6">
         <BackendStatus />
-        <ECGChart />
-        <MetricsPanel />
-        <MarkerList />
-        {/* Único MarkerForm de la app (FEAT-003b Block 5): autosuficiente, sirve tanto
-            al flujo de creación (disparado desde ECGChart) como al de edición
-            (disparado desde MarkerList), ambos vía markersStore.formState. */}
-        <MarkerForm />
+        {/* Panel principal (FEAT-009 Block 6): elige entre el estado vacío y el estado
+            con señal, y contiene el trazado, las métricas, los marcadores y el único
+            MarkerForm de la app (FEAT-003b Block 5). */}
+        <MainPanel />
       </div>
     </AppLayout>
   );
