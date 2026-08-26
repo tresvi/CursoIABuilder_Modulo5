@@ -91,3 +91,9 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   render de Canvas 2D, que fallaba en silencio. Ahora el backend fija el wire format con
   `[JsonPropertyName("mV")]`, y el cliente HTTP del front valida el shape de la respuesta antes de
   aceptarla.
+- FEAT-008: pipeline de integración continua (`.github/workflows/ci.yml`) que corre en cada Pull
+  Request. Dos jobs independientes en paralelo sobre `ubuntu-latest`: `frontend` (`npm ci` → `npm
+  run lint` → `npm test`) y `backend` (`dotnet restore` → `dotnet format --verify-no-changes` →
+  `dotnet test`, sobre `ECGViewer.sln`). Sin secretos ni llamadas a red externa; acciones de
+  terceros pineadas a `@v4`; `permissions: contents: read` y `timeout-minutes: 10` en ambos jobs
+  como mitigación de mínimo privilegio y de agotamiento de recursos ante un PR malicioso.
