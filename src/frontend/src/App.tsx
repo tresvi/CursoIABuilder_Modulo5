@@ -6,11 +6,24 @@ import { FilterPanel } from '@/components/FilterPanel';
 import { MarkerForm } from '@/components/MarkerForm';
 import { MarkerList } from '@/components/MarkerList';
 import { MetricsPanel } from '@/components/MetricsPanel';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { SidebarSection } from '@/components/layout/SidebarSection';
 
 function App() {
+  // Las tres secciones del sidebar se crean vacías en este bloque: sus controles
+  // se reubican acá en los Blocks 3 y 4 de FEAT-009. Hasta entonces, todos los
+  // componentes existentes siguen montados en el panel principal.
+  const sidebar = (
+    <Sidebar>
+      <SidebarSection title="Archivo" defaultOpen />
+      <SidebarSection title="Herramientas" defaultOpen />
+      <SidebarSection title="Filtros" defaultOpen />
+    </Sidebar>
+  );
+
   return (
-    <main className="min-h-screen p-8">
-      <h1 className="mb-6 text-2xl font-bold">ECGViewer</h1>
+    <AppLayout sidebar={sidebar}>
       <div className="flex flex-col gap-6">
         <BackendStatus />
         <CsvUpload />
@@ -24,7 +37,7 @@ function App() {
             (disparado desde MarkerList), ambos vía markersStore.formState. */}
         <MarkerForm />
       </div>
-    </main>
+    </AppLayout>
   );
 }
 
