@@ -11,14 +11,17 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/components/layout/SidebarSection';
 
 function App() {
-  // Las tres secciones del sidebar se crean vacías en este bloque: sus controles
-  // se reubican acá en los Blocks 3 y 4 de FEAT-009. Hasta entonces, todos los
-  // componentes existentes siguen montados en el panel principal.
+  // Reubicación de FEAT-009 Block 3: "Herramientas" y "Filtros" pasan al sidebar
+  // sin tocar su lógica ni su estado. "Archivo" se llena en el Block 4 (CsvUpload).
   const sidebar = (
     <Sidebar>
       <SidebarSection title="Archivo" defaultOpen />
-      <SidebarSection title="Herramientas" defaultOpen />
-      <SidebarSection title="Filtros" defaultOpen />
+      <SidebarSection title="Herramientas" defaultOpen>
+        <ChartToolbar />
+      </SidebarSection>
+      <SidebarSection title="Filtros" defaultOpen>
+        <FilterPanel />
+      </SidebarSection>
     </Sidebar>
   );
 
@@ -27,8 +30,6 @@ function App() {
       <div className="flex flex-col gap-6">
         <BackendStatus />
         <CsvUpload />
-        <ChartToolbar />
-        <FilterPanel />
         <ECGChart />
         <MetricsPanel />
         <MarkerList />

@@ -40,7 +40,7 @@ export function ChartToolbar() {
   return (
     <section
       aria-label="Herramientas del gráfico"
-      className="mx-auto flex max-w-3xl items-center gap-2"
+      className="flex w-full flex-col items-stretch gap-2"
     >
       <button
         type="button"

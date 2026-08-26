@@ -193,9 +193,9 @@ export function FilterPanel() {
   return (
     <section
       aria-label="Panel de filtros"
-      className="mx-auto flex max-w-3xl flex-col gap-3 rounded-md border border-slate-300 bg-white p-3"
+      className="flex w-full flex-col gap-3 rounded-md border border-slate-300 bg-white p-3"
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col items-stretch gap-2">
         <select
           aria-label="Tipo de filtro"
           value={filterType}

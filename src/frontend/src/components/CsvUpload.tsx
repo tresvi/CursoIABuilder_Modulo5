@@ -100,7 +100,7 @@ export function CsvUpload() {
   }, []);
 
   return (
-    <section className="mx-auto flex max-w-xl flex-col gap-4">
+    <section className="flex w-full flex-col gap-4">
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}

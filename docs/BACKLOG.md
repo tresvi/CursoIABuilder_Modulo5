@@ -37,6 +37,16 @@ como se hizo con FEAT-007 → FEAT-007a/b.
   `signalStore` (lo prescribe la spec de FEAT-009, Block 2). Refactor candidato al cerrar FEAT-009:
   montar `TopBar` desde `App.tsx` o desde `MainPanel`, para que el shell vuelva a ser testeable sin
   stores.
+- **Validación de rango invertido de `FilterPanel` sin cobertura.** El mensaje
+  `'La frecuencia baja debe ser menor que la alta.'` (`FilterPanel.tsx:104`) no lo ejercita ningún
+  test: se puede borrar entero y la suite sigue verde. No se corrige en FEAT-009 porque el criterio
+  de cierre del Block 3 exige que `FilterPanel.test.tsx` quede sin modificar. Candidato a QUICK-FIX
+  posterior.
+- **Los filtros deben vivir en el panel central, no en el sidebar** (decisión de producto tomada,
+  según la referencia visual `docs/UI/UI_With_ECG_Loaded.PNG`). FEAT-009 los deja en el sidebar
+  porque así lo mandan su FR-04/AC-04; el traslado se hará en un ticket **FEAT-010** con su propio
+  PRD, que sacará `FilterPanel` del sidebar y lo llevará al panel principal como tarjeta
+  "Filtro digital".
 
 ## Notas de uso
 
