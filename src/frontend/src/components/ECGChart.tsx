@@ -255,7 +255,7 @@ export function ECGChart() {
     return (
       <div
         role="status"
-        className="mx-auto flex h-64 max-w-3xl items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500"
+        className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500"
       >
         Cargá una señal para visualizarla.
       </div>
@@ -271,7 +271,7 @@ export function ECGChart() {
         onMouseUp={onMouseUp}
         style={{ width: DIMS.width, height: DIMS.height }}
         className={cn(
-          'relative mx-auto rounded-lg border border-slate-200 bg-white',
+          'relative rounded-lg border border-slate-200 bg-white',
           activeTool === 'zoom' && 'cursor-zoom-in',
           (activeTool === 'ruler' || activeTool === 'crop') && 'cursor-crosshair',
         )}

@@ -34,27 +34,27 @@ export function MetricsPanel() {
   return (
     <section
       aria-label="Métricas cardíacas"
-      className="mx-auto flex max-w-3xl items-center gap-4 rounded-md border border-slate-300 bg-white p-3 text-sm"
+      className="flex w-full flex-col gap-3 rounded-md border border-slate-300 bg-white p-3 text-sm"
     >
-      <div className="flex flex-col items-center">
+      <div className="flex items-baseline justify-between gap-4">
         <span className="text-xs font-medium text-slate-500">BPM</span>
         <span aria-label="BPM" className="font-mono text-sky-700">
           {formatMetric(metrics.bpm, 0)}
         </span>
       </div>
-      <div className="flex flex-col items-center">
+      <div className="flex items-baseline justify-between gap-4">
         <span className="text-xs font-medium text-slate-500">SDNN (ms)</span>
         <span aria-label="SDNN" className="font-mono text-sky-700">
           {formatMetric(metrics.sdnn, 1)}
         </span>
       </div>
-      <div className="flex flex-col items-center">
+      <div className="flex items-baseline justify-between gap-4">
         <span className="text-xs font-medium text-slate-500">RMSSD (ms)</span>
         <span aria-label="RMSSD" className="font-mono text-sky-700">
           {formatMetric(metrics.rmssd, 1)}
         </span>
       </div>
-      <div className="flex flex-col items-center">
+      <div className="flex items-baseline justify-between gap-4">
         <span className="text-xs font-medium text-slate-500">pNN50 (%)</span>
         <span aria-label="pNN50" className="font-mono text-sky-700">
           {formatMetric(metrics.pnn50, 1)}

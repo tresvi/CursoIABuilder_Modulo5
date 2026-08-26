@@ -1,35 +1,10 @@
 import { useCallback, useId, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useSignalStore, type SignalError } from '@/state/signalStore';
+import { useSignalStore } from '@/state/signalStore';
+import { signalErrorMessage } from '@/lib/ecg/signalErrorMessage';
 
 /** Límite de tamaño de archivo antes de leer/parsear (mitigación R1 del threat model). */
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
-
-/**
- * Mapea un error de carga a un mensaje legible FIJO por tipo (mitigación R2 / XSS).
- * Nunca incrusta contenido crudo del archivo: solo texto constante y, a lo sumo,
- * un número de fila calculado por el parser. Sin `dangerouslySetInnerHTML`.
- */
-function errorMessage(error: SignalError): string {
-  if (error === 'file-too-large') {
-    return 'El archivo supera el tamaño máximo permitido de 25 MB.';
-  }
-  if (error === 'read-error') {
-    return 'No se pudo leer el archivo. Intente nuevamente.';
-  }
-  switch (error.kind) {
-    case 'too-few-columns':
-      return 'El archivo debe tener dos columnas: tiempo y mV.';
-    case 'multichannel':
-      return 'El archivo tiene más de un canal; solo se soporta un canal.';
-    case 'non-numeric':
-      return `El archivo contiene un valor no numérico en la fila ${error.row}.`;
-    case 'no-data':
-      return 'El archivo no contiene filas de datos.';
-    case 'inconsistent-columns':
-      return `El archivo tiene filas con distinta cantidad de columnas (fila ${error.row}).`;
-  }
-}
 
 /**
  * UI de carga de la señal ECG (RF-01, FR-01/FR-06). Input de archivo nativo estilado
@@ -61,8 +36,9 @@ export function CsvUpload() {
         setError('read-error');
         return;
       }
-      // (3) Parseo/validación de dominio en el store.
-      loadFromText(text);
+      // (3) Parseo/validación de dominio en el store; el nombre del archivo solo se
+      // usa como texto del encabezado (FEAT-009, FR-09), nunca para abrir rutas.
+      loadFromText(text, file.name);
     },
     [loadFromText, setError],
   );
@@ -99,7 +75,7 @@ export function CsvUpload() {
   }, []);
 
   return (
-    <section className="mx-auto flex max-w-xl flex-col gap-4">
+    <section className="flex w-full flex-col gap-4">
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -142,7 +118,7 @@ export function CsvUpload() {
           role="alert"
           className="rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-800"
         >
-          {errorMessage(error)}
+          {signalErrorMessage(error)}
         </p>
       )}
     </section>

@@ -71,6 +71,19 @@ y el proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
   sin reemplazar la validación del backend), y encadenado aditivo de filtros con posibilidad de
   revertir un único nivel (`signalStore.applyFilter`/`revertLastFilter`, sin llamada al backend
   al revertir).
+- FEAT-009: reorganización completa de la interfaz según la referencia visual de `docs/UI/`. La app
+  pasa de una columna única a un layout de aplicación: sidebar oscuro con las secciones colapsables
+  "Archivo", "Herramientas" y "Filtros", encabezado con el nombre del archivo cargado y la duración
+  de la señal, y panel principal que alterna entre un estado vacío con instrucción y llamado a la
+  acción, y el estado con señal (trazado + tarjeta de métricas + lista de marcadores). Suma la carga
+  de 3 señales ECG de ejemplo (`ECG_20_Seg_FILTRADO`, `ECG_20_Seg_NO_FILTRADO`,
+  `ECG_20_Seg_ESPANTOSO`) servidas como assets estáticos del mismo origen: se descargan desde una
+  lista blanca de rutas literales —la ruta nunca se construye concatenando la entrada del usuario— y
+  el contenido pasa por el mismo `parseCsv` que "Abrir CSV", sin considerarse confiable por venir del
+  propio origen. RF-12/RF-13/RF-15 (importar y exportar XLSX, y "Guardar") quedan reservados en el
+  menú como ítems visibles pero deshabilitados, sin handler asociado: implementarlos es reemplazar
+  cada ítem por el control real, no agregar entradas nuevas. Sin dependencias nuevas y sin cambios
+  funcionales en el Canvas 2D propio.
 
 ### Fixed
 

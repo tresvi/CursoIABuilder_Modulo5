@@ -24,8 +24,12 @@ export interface SignalState {
   /** Último error de carga; `null` en `idle`/`loaded`. */
   error: SignalError | null;
   status: SignalStatus;
-  /** Parsea `text` con `parseCsv` e ingresa la señal, o registra el error (FR-04/FR-05). */
-  loadFromText: (text: string) => void;
+  /** Nombre del archivo de la señal cargada; `null` si no hay señal o se cargó sin
+   * nombre. Lo consume el encabezado del panel principal (FEAT-009, FR-09). */
+  fileName: string | null;
+  /** Parsea `text` con `parseCsv` e ingresa la señal, o registra el error (FR-04/FR-05).
+   * `fileName` es opcional: cuando se omite, el nombre queda en `null`. */
+  loadFromText: (text: string, fileName?: string) => void;
   /** Registra un error previo al parseo (tamaño/lectura) sin ingresar señal. */
   setError: (error: SignalError) => void;
   /** Vuelve al estado inicial (memoria volátil; no hay persistencia — AGENTS.md). */
@@ -54,16 +58,21 @@ export const useSignalStore = create<SignalState>((set, get) => ({
   previousSignal: null,
   error: null,
   status: 'idle',
-  loadFromText: (text) => {
+  fileName: null,
+  loadFromText: (text, fileName) => {
     const result = parseCsv(text);
     if (result.ok) {
-      set({ signal: result.signal, status: 'loaded', error: null });
+      set({ signal: result.signal, status: 'loaded', error: null, fileName: fileName ?? null });
     } else {
-      set({ signal: null, status: 'error', error: result.error });
+      // Sin señal no hay archivo cargado: el nombre no debe sobrevivir a un parseo fallido.
+      set({ signal: null, status: 'error', error: result.error, fileName: null });
     }
   },
-  setError: (error) => set({ signal: null, status: 'error', error }),
-  reset: () => set({ signal: null, previousSignal: null, status: 'idle', error: null }),
+  // Mismo criterio que la rama de fallo de `loadFromText`: sin señal no hay archivo
+  // cargado, así que el nombre del intento anterior tampoco debe sobrevivir.
+  setError: (error) => set({ signal: null, status: 'error', error, fileName: null }),
+  reset: () =>
+    set({ signal: null, previousSignal: null, status: 'idle', error: null, fileName: null }),
   cropToRange: (range) => {
     const { signal } = get();
     if (!signal) return;
