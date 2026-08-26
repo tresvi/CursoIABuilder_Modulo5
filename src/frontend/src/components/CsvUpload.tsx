@@ -61,8 +61,9 @@ export function CsvUpload() {
         setError('read-error');
         return;
       }
-      // (3) Parseo/validación de dominio en el store.
-      loadFromText(text);
+      // (3) Parseo/validación de dominio en el store; el nombre del archivo solo se
+      // usa como texto del encabezado (FEAT-009, FR-09), nunca para abrir rutas.
+      loadFromText(text, file.name);
     },
     [loadFromText, setError],
   );

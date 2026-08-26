@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { TopBar } from './TopBar';
 
 interface AppLayoutProps {
   /** Contenido de la columna izquierda (sidebar). Requerido: el shell son dos columnas. */
@@ -8,8 +9,8 @@ interface AppLayoutProps {
 
 /**
  * Shell de dos columnas de la app (FEAT-009, Block 1): sidebar oscuro fijo a la
- * izquierda y panel de contenido claro a la derecha, con scroll propio.
- * Es puramente estructural: no conoce ningún store.
+ * izquierda y panel de contenido claro a la derecha, con scroll propio. El panel
+ * principal arranca con el `TopBar` (Block 2) sobre el contenido.
  */
 export function AppLayout({ sidebar, children }: AppLayoutProps) {
   return (
@@ -20,7 +21,10 @@ export function AppLayout({ sidebar, children }: AppLayoutProps) {
       >
         {sidebar}
       </aside>
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+      <main className="flex-1 overflow-auto p-6">
+        <TopBar />
+        {children}
+      </main>
     </div>
   );
 }

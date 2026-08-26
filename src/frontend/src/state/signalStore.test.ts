@@ -152,4 +152,33 @@ describe('signalStore', () => {
       expect(state.previousSignal).toBeNull();
     });
   });
+
+  describe('fileName (FEAT-009, Block 2)', () => {
+    it('loadFromText guarda fileName y reset lo limpia', () => {
+      const csv = 'tiempo,mV\n0,-0.085\n0.002,-0.05';
+
+      useSignalStore.getState().loadFromText(csv, 'ECG_20_Seg_FILTRADO.csv');
+      expect(useSignalStore.getState().fileName).toBe('ECG_20_Seg_FILTRADO.csv');
+
+      // Sin nombre (llamador que omite el parámetro opcional): queda en null.
+      useSignalStore.getState().loadFromText(csv);
+      expect(useSignalStore.getState().fileName).toBeNull();
+
+      // Parseo fallido: sin señal no hay archivo cargado, el nombre no sobrevive.
+      useSignalStore.getState().loadFromText(csv, 'ECG_20_Seg_FILTRADO.csv');
+      useSignalStore.getState().loadFromText('tiempo,mV,otro\n0,-0.085,1');
+      expect(useSignalStore.getState().status).toBe('error');
+      expect(useSignalStore.getState().fileName).toBeNull();
+
+      // setError (error previo al parseo: tamaño/lectura) deja el mismo estado.
+      useSignalStore.getState().loadFromText(csv, 'ECG_20_Seg_FILTRADO.csv');
+      useSignalStore.getState().setError('file-too-large');
+      expect(useSignalStore.getState().signal).toBeNull();
+      expect(useSignalStore.getState().fileName).toBeNull();
+
+      useSignalStore.getState().loadFromText(csv, 'ECG_20_Seg_FILTRADO.csv');
+      useSignalStore.getState().reset();
+      expect(useSignalStore.getState().fileName).toBeNull();
+    });
+  });
 });

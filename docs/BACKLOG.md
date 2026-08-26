@@ -33,6 +33,10 @@ como se hizo con FEAT-007 → FEAT-007a/b.
 - **Límite de 500.000 muestras en `POST /api/filters/apply`** (FEAT-007b): mitigación temporal de un
   riesgo HIGH de DoS aceptada en el threat model. Deberá ampliarse/revisarse a futuro; evaluar si
   conviene hacerlo configurable (env var / `appsettings`) en vez de una constante hardcodeada.
+- **`AppLayout` dejó de ser un shell agnóstico del estado** porque monta `TopBar`, que lee
+  `signalStore` (lo prescribe la spec de FEAT-009, Block 2). Refactor candidato al cerrar FEAT-009:
+  montar `TopBar` desde `App.tsx` o desde `MainPanel`, para que el shell vuelva a ser testeable sin
+  stores.
 
 ## Notas de uso
 
